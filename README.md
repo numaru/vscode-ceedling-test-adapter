@@ -1,6 +1,6 @@
 # Ceedling Test Explorer for Visual Studio Code
 
-Run your Ceedling tests using the 
+Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the 
 [Test Explorer UI](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer).
 
 ![Screenshot](img/screenshot.png)
