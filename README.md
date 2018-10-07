@@ -19,6 +19,7 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 * Install the extension and restart VS Code
 * Open the workspace or folder containing your Ceedling project
 * Configure your `project.yml` path in the VS Code's settings if required [see below](#options)
+* Configure the shell path where ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
 * Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
 * Open the Test view
 * Run your tests using the ![Run](img/run.png) icons in the Test Explorer or the CodeLenses in your test file
@@ -30,6 +31,7 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 Property                        | Description
 --------------------------------|---------------------------------------------------------------
 `ceedlingExplorer.projectPath`  | The path to the ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
+`ceedlingExplorer.shellPath`    | The path to the shell where ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
 
 ## Commands
 

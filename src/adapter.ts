@@ -125,6 +125,24 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private async sanityCheck() {
+        const release = await this.ceedlingMutex.acquire();
+        try {
+            const result = await this.execCeedling([`summary`]);
+            if (result.error) {
+                vscode.window.showErrorMessage(
+                    `Ceedling failed to run in the configured shell. ` +
+                    `Please check the ceedlingExplorer.shellPath option.`
+                )
+            }
+            if (result.stderr.includes(`Could not find command "summary".`)) {
+                vscode.window.showErrorMessage(
+                    `Ceedling failed to run the project. ` +
+                    `Please check the ceedlingExplorer.projectPath option.`
+                )
+            }
+        } finally {
+            release();
+        }
         const ymlProjectData = await this.getYmlProjectData();
         if (ymlProjectData) {
             try {
@@ -150,6 +168,11 @@ export class CeedlingAdapter implements TestAdapter {
 
     private getConfiguration(): vscode.WorkspaceConfiguration {
 		return vscode.workspace.getConfiguration('ceedlingExplorer', this.workspaceFolder.uri);
+    }
+
+    private getShellPath(): string | undefined {
+        const shellPath = this.getConfiguration().get<string>('shellPath', 'null');
+        return shellPath !== "null" ? shellPath : undefined;
     }
 
     private getProjectPath(): string {
@@ -179,11 +202,27 @@ export class CeedlingAdapter implements TestAdapter {
         }
     }
 
+    private getCeedlingCommand(args: ReadonlyArray<string>) {
+        const shell = this.getShellPath();
+        const line = `ceedling ${args}`;
+        if (shell === undefined) {
+            return line;
+        } else {
+            /* This implementation doesn't handle the case where 'cmd' is explicitly selected */
+            return `"${shell}" -c "${line}"`;
+        }
+    }
+
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
         return new Promise<any>((resolve) => {
             this.ceedlingProcess = child_process.exec(
-                `ceedling ${args}`,
-                { cwd: this.getProjectPath() },
+                this.getCeedlingCommand(args),
+                {
+                    cwd: this.getProjectPath(),
+                    // TODO(knu) Replace getCeedlingCommand() trick by the following line when
+                    // Node v10.12 will be available there
+                    // shell: this.getShellPath()
+                },
                 (error, stdout, stderr) => {
                     resolve({error, stdout, stderr});
                 },
@@ -414,7 +453,7 @@ export class CeedlingAdapter implements TestAdapter {
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const result = await this.execCeedling([`test:${testSuite.file}`]);
+            const result = await this.execCeedling([`test:${testSuite.label}`]);
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return fail */

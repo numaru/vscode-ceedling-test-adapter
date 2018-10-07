@@ -3,9 +3,9 @@
   "displayName": "Ceedling Test Explorer",
   "description": "Run your Ceedling tests in the Sidebar of Visual Studio Code",
   "icon": "img/icon.png",
-	"author": {
-		"name": "Kin Numaru"
-	},
+  "author": {
+    "name": "Kin Numaru"
+  },
   "publisher": "numaru",
   "version": "1.0.0",
   "license": "MIT",
@@ -70,6 +70,13 @@
         "ceedlingExplorer.projectPath": {
           "description": "Path to the ceedling project directory",
           "type": "string",
+          "default": ".",
+          "scope": "resource"
+        },
+        "ceedlingExplorer.shellPath": {
+          "description": "Path to the shell where ceedling is installed",
+          "type": "string",
+          "default": "null",
           "scope": "resource"
         }
       }
