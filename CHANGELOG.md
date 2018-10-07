@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.1.0] - 2018-10-07
+
+### Added
+
+* Add `shellPath` option to use the shell where ceedling is installed
+
 ## 1.0.0 - 2018-09-23
 
 ### Added
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.0.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.1.0...develop
+[1.1.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.0.0...v1.1.0
