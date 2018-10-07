@@ -70,6 +70,7 @@
         "ceedlingExplorer.projectPath": {
           "description": "Path to the ceedling project directory",
           "type": "string",
+          "default": ".",
           "scope": "resource"
         },
         "ceedlingExplorer.shellPath": {
