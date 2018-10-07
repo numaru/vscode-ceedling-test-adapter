@@ -71,6 +71,12 @@
           "description": "Path to the ceedling project directory",
           "type": "string",
           "scope": "resource"
+        },
+        "ceedlingExplorer.shellPath": {
+          "description": "Path to the shell where ceedling is installed",
+          "type": "string",
+          "default": "null",
+          "scope": "resource"
         }
       }
     }
