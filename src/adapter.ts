@@ -152,6 +152,11 @@ export class CeedlingAdapter implements TestAdapter {
 		return vscode.workspace.getConfiguration('ceedlingExplorer', this.workspaceFolder.uri);
     }
 
+    private getShellPath(): string | undefined {
+        const shellPath = this.getConfiguration().get<string>('shellPath', 'null');
+        return shellPath !== "null" ? shellPath : undefined;
+    }
+
     private getProjectPath(): string {
         const defaultProjectPath = '.';
         const projectPath = this.getConfiguration().get<string>('projectPath', defaultProjectPath);
@@ -179,11 +184,27 @@ export class CeedlingAdapter implements TestAdapter {
         }
     }
 
+    private getCeedlingCommand(args: ReadonlyArray<string>) {
+        const shell = this.getShellPath();
+        const line = `ceedling ${args}`;
+        if (shell === undefined) {
+            return line;
+        } else {
+            /* This implementation doesn't handle the case where 'cmd' is explicitly selected */
+            return `"${shell}" -c "${line}"`;
+        }
+    }
+
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
         return new Promise<any>((resolve) => {
             this.ceedlingProcess = child_process.exec(
-                `ceedling ${args}`,
-                { cwd: this.getProjectPath() },
+                this.getCeedlingCommand(args),
+                {
+                    cwd: this.getProjectPath(),
+                    // TODO(knu) Replace getCeedlingCommand() trick by the following line when
+                    // Node v10.12 will be available there
+                    // shell: this.getShellPath()
+                },
                 (error, stdout, stderr) => {
                     resolve({error, stdout, stderr});
                 },
