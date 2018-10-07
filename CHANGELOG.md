@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.1.1] - 2018-10-07
+
+### Changed
+
+* Fix the wrong line number for test if there is more than one line feed before
+
 ## [1.1.0] - 2018-10-07
 
 ### Added
@@ -19,5 +25,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.1.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.1.1...develop
+[1.1.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.0.0...v1.1.0
