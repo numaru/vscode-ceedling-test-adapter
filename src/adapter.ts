@@ -125,6 +125,24 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private async sanityCheck() {
+        const release = await this.ceedlingMutex.acquire();
+        try {
+            const result = await this.execCeedling([`summary`]);
+            if (result.error) {
+                vscode.window.showErrorMessage(
+                    `Ceedling failed to run in the configured shell. ` +
+                    `Please check the ceedlingExplorer.shellPath option.`
+                )
+            }
+            if (result.stderr.includes(`Could not find command "summary".`)) {
+                vscode.window.showErrorMessage(
+                    `Ceedling failed to run the project. ` +
+                    `Please check the ceedlingExplorer.projectPath option.`
+                )
+            }
+        } finally {
+            release();
+        }
         const ymlProjectData = await this.getYmlProjectData();
         if (ymlProjectData) {
             try {
