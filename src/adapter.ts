@@ -435,7 +435,7 @@ export class CeedlingAdapter implements TestAdapter {
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const result = await this.execCeedling([`test:${testSuite.file}`]);
+            const result = await this.execCeedling([`test:${testSuite.label}`]);
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return fail */
