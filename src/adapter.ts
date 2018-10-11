@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as xml2js from 'xml2js';
-import opn = require('opn');
 import * as vscode from 'vscode';
 import {
     TestAdapter,
