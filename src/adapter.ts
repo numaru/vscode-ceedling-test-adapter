@@ -5,7 +5,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import * as xml2js from 'xml2js';
-import opn = require('opn');
 import * as vscode from 'vscode';
 import {
     TestAdapter,
@@ -62,7 +61,18 @@ export class CeedlingAdapter implements TestAdapter {
     async load(): Promise<void> {
         this.testsEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
 
-        await this.sanityCheck();
+        const errorMessage = await this.sanityCheck();
+        if (errorMessage) {
+            this.testsEmitter.fire({
+                type: 'finished',
+                errorMessage: errorMessage
+            } as TestLoadFinishedEvent);
+            return;
+        }
+
+        const ymlProjectData = await this.getYmlProjectData();
+        this.setFunctionRegex(ymlProjectData);
+        this.watchFilesForReload([this.getYmlProjectPath()]);
 
         const assemblyFiles = await this.getFileList('assembly');
         const headerFiles = await this.getFileList('header');
@@ -76,14 +86,7 @@ export class CeedlingAdapter implements TestAdapter {
 
         this.watchFilesForReload(testFiles);
 
-        const ymlProjectData = await this.getYmlProjectData();
-        if (ymlProjectData) {
-            this.setFunctionRegex(ymlProjectData);
-            this.watchFilesForReload([this.getYmlProjectPath()]);
-        }
-
         await this.setTestSuiteInfo(testFiles);
-
         this.testsEmitter.fire({ type: 'finished', suite: this.testSuiteInfo } as TestLoadFinishedEvent);
     }
 
@@ -124,45 +127,32 @@ export class CeedlingAdapter implements TestAdapter {
 		this.disposables = [];
     }
 
-    private async sanityCheck() {
+    private async sanityCheck(): Promise<string | void> {
         const release = await this.ceedlingMutex.acquire();
         try {
             const result = await this.execCeedling([`summary`]);
             if (result.error) {
-                vscode.window.showErrorMessage(
-                    `Ceedling failed to run in the configured shell. ` +
-                    `Please check the ceedlingExplorer.shellPath option.`
-                )
-            }
-            if (result.stderr.includes(`Could not find command "summary".`)) {
-                vscode.window.showErrorMessage(
-                    `Ceedling failed to run the project. ` +
-                    `Please check the ceedlingExplorer.projectPath option.`
-                )
+                return `Ceedling failed to run in the configured shell. ` +
+                       `Please check the ceedlingExplorer.shellPath option.\n` +
+                       `${result.stdout}\n${result.stderr}`
             }
         } finally {
             release();
         }
         const ymlProjectData = await this.getYmlProjectData();
-        if (ymlProjectData) {
-            try {
-                if (!ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report')) {
-                    throw 'Xml report plugin not enabled';
-                }
-            } catch (e) {
-                vscode.window.showErrorMessage(
-                    `The required Ceedling plugin 'xml_tests_report' is not enabled. ` +
-                    `You have to edit your 'project.xml' file to enable the plugin.`,
-                    'Open Ceedling documentation'
-                ).then((message) => {
-                    if (message === 'Open Ceedling documentation') {
-                        opn(
-                            'https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md' +
-                            '#tool-element-runtime-substitution-notational-substitution'
-                        )
-                    }
-                });
+        if (!ymlProjectData) {
+            return `Failed to find the project.yml file. ` +
+                   `Please check the ceedlingExplorer.projectPath option.`;
+        }
+        try {
+            if (!ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report')) {
+                throw 'Xml report plugin not enabled';
             }
+        } catch (e) {
+            return `The required Ceedling plugin 'xml_tests_report' is not enabled. ` +
+                   `You have to edit your 'project.xml' file to enable the plugin.\n` +
+                   `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
+                   `#tool-element-runtime-substitution-notational-substitution`;
         }
     }
 
