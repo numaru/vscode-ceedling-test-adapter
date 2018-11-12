@@ -36,6 +36,7 @@ export class CeedlingAdapter implements TestAdapter {
         children: []
     };
     private isCanceled: boolean = false;
+    private isDebugging: boolean = false;
     private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -108,8 +109,38 @@ export class CeedlingAdapter implements TestAdapter {
         this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
     }
 
-    async debug(tests: string[]): Promise<void> {
-        throw new Error("Method not implemented.");
+    async debug(testIds: string[]): Promise<void> {
+        /* Do not start a debugging session if one is running */
+        if (this.isDebugging) {
+            return;
+        } else {
+            this.isDebugging = true;
+        }
+        const testSuites = this.getTestSuitesFromTestIds(testIds);
+        const testSuite = testSuites[0];
+        // const testId = testIds[0];
+        const debugConfiguration = this.getDebugConfiguration(testSuite);
+        // const functionName = testId.split('::')[1];
+        // const functionBreakpoint = new vscode.FunctionBreakpoint(functionName);
+        // vscode.debug.addBreakpoints([functionBreakpoint]);
+        const debugSessionStarted = await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration);
+        if (!debugSessionStarted) {
+            this.isDebugging = false;
+            return;
+        }
+        const currentSession = vscode.debug.activeDebugSession;
+        if (!currentSession) {
+            this.isDebugging = false;
+            return;
+        }
+        await new Promise<void>(() => {
+            vscode.debug.onDidTerminateDebugSession(session => {
+                if (currentSession !== session) {
+                    return;
+                }
+                this.isDebugging = false;
+            });
+        });
     }
 
     cancel(): void {
@@ -159,6 +190,29 @@ export class CeedlingAdapter implements TestAdapter {
     private getConfiguration(): vscode.WorkspaceConfiguration {
 		return vscode.workspace.getConfiguration('ceedlingExplorer', this.workspaceFolder.uri);
     }
+
+    
+    private getDebugConfiguration(testSuite: TestSuiteInfo): vscode.DebugConfiguration | string {
+        try {
+            const launchConfiguration = vscode.workspace.getConfiguration('launch', this.workspaceFolder.uri);
+            const configurationArray = launchConfiguration.get<Array<vscode.DebugConfiguration>>('configurations');
+            const debugConfiguration = configurationArray!.find((element) => {
+                return element.name === "ceedlingExplorer"
+            });
+            debugConfiguration!.program = path.resolve(
+                this.getProjectPath(), 'build', 'test', 'out',
+                path.basename(testSuite.file!, '.c') + '.out'
+            );
+            launchConfiguration.update('configurations', configurationArray);
+            return debugConfiguration!;
+        } catch(e) {
+            vscode.window.showErrorMessage(
+                `You need to define a debug configuration named 'ceedlingExplorer' in launch.json`
+            );
+            return "";
+        }
+    }
+
 
     private getShellPath(): string | undefined {
         const shellPath = this.getConfiguration().get<string>('shellPath', 'null');
