@@ -50,7 +50,7 @@ ID                                 | Command
 
 To set up debugging, create a new Debug Configuration. `${command:ceedlingExplorer.debugTestExecutable}` 
 can be used access the .out test executable filename (without directory) being ran. Depending on your Ceedling configuration
-these can be found in `Ceedling/build/test/out/`. Then, edit the `ceedlingExplorer.debugConfiguration` settings with the name of the Debug Configuration to run during debug.
+these can be found in `projectPath/build/test/out/`. Then, edit the `ceedlingExplorer.debugConfiguration` settings with the name of the Debug Configuration to run during debug.
 
 Note: Individual test debugging is not supported. Instead the entire test file will be ran, so skip or remove breakpoints accordingly.
 
@@ -60,7 +60,7 @@ Example configuration with Native Debug (`webfreak.debug`):
     "name": "Ceedling Test Explorer Debug",
     "type": "cppdbg",
     "request": "launch",
-    "program": "Ceedling/build/test/out/${command:ceedlingExplorer.debugTestExecutable}",
+    "program": "${workspaceFolder}/build/test/out/${command:ceedlingExplorer.debugTestExecutable}",
     "args": [],
     "stopAtEntry": false,
     "cwd": "${workspaceFolder}",
