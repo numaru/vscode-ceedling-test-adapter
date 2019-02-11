@@ -130,7 +130,7 @@ export class CeedlingAdapter implements TestAdapter {
             }
 
             // Set current test executable
-            this.debugTestExecutable = `${/([^/]*).c$/.exec(testSuites[0].id)![1]}.out`;
+            this.debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}.out`;
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
