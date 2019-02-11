@@ -7,8 +7,10 @@ let currentAdapter: CeedlingAdapter | null = null;
 
 function getCurrentDebugConfiguration(): string {
     const currentExec = currentAdapter != null ? currentAdapter!.debugTestExecutable : "";
-    if (!currentExec)
-        throw new Error("Not currently debugging a Ceedling Test");
+    if (!currentExec) {
+        vscode.window.showErrorMessage("Not currently debugging a Ceedling Test");
+        return "";
+    }
     return currentExec;
 }
 

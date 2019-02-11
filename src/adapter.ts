@@ -112,8 +112,10 @@ export class CeedlingAdapter implements TestAdapter {
     async debug(tests: string[]): Promise<void> {
         // Get and validate debug configuration
         const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
-        if (!debugConfiguration)
-            throw new Error("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.")
+        if (!debugConfiguration) {
+            vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
+            return;
+        }
         
         // Determine test suite to run
         const testSuites = this.getTestSuitesFromTestIds(tests);
@@ -121,8 +123,10 @@ export class CeedlingAdapter implements TestAdapter {
         
         // Execute ceedling test compilation
         const result = await this.execCeedling([`test:${testToExec}`]);
-        if (result.error)
-            throw new Error("Could not compile test, see test output for more details");
+        if (result.error) {
+            vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
+            return;
+        }
 
         // Set current test executable
         this.debugTestExecutable = `${/([^/]*).c$/.exec(testSuites[0].id)![1]}.out`;
