@@ -110,30 +110,31 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async debug(tests: string[]): Promise<void> {
-        // Get and validate debug configuration
-        const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
-        if (!debugConfiguration) {
-            vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
-            return;
-        }
-        
-        // Determine test suite to run
-        const testSuites = this.getTestSuitesFromTestIds(tests);
-        const testToExec = testSuites[0].id;
-        
-        // Execute ceedling test compilation
-        const result = await this.execCeedling([`test:${testToExec}`]);
-        if (result.error) {
-            vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
-            return;
-        }
-
-        // Set current test executable
-        this.debugTestExecutable = `${/([^/]*).c$/.exec(testSuites[0].id)![1]}.out`;
-
-        // Launch debugger
         try {
-            await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration);
+            // Get and validate debug configuration
+            const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
+            if (!debugConfiguration) {
+                vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
+                return;
+            }
+            
+            // Determine test suite to run
+            const testSuites = this.getTestSuitesFromTestIds(tests);
+            const testToExec = testSuites[0].id;
+            
+            // Execute ceedling test compilation
+            const result = await this.execCeedling([`test:${testToExec}`]);
+            if (result.error) {
+                vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
+                return;
+            }
+
+            // Set current test executable
+            this.debugTestExecutable = `${/([^/]*).c$/.exec(testSuites[0].id)![1]}.out`;
+
+            // Launch debugger
+            if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
+                vscode.window.showErrorMessage("Debugger could not be started.");
         }
         finally {
             // Reset current test executable
