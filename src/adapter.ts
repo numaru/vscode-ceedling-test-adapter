@@ -37,6 +37,7 @@ export class CeedlingAdapter implements TestAdapter {
     };
     private isCanceled: boolean = false;
     private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
+    public debugTestExecutable: string = "";
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
@@ -109,7 +110,31 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async debug(tests: string[]): Promise<void> {
-        throw new Error("Method not implemented.");
+        // Get and validate debug configuration
+        const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
+        if (!debugConfiguration)
+            throw new Error("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.")
+        
+        // Determine test suite to run
+        const testSuites = this.getTestSuitesFromTestIds(tests);
+        const testToExec = testSuites[0].id;
+        
+        // Execute ceedling test compilation
+        const result = await this.execCeedling([`test:${testToExec}`]);
+        if (result.error)
+            throw new Error("Could not compile test, see test output for more details");
+
+        // Set current test executable
+        this.debugTestExecutable = `${/([^/]*).c$/.exec(testSuites[0].id)![1]}.out`;
+
+        // Launch debugger
+        try {
+            await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration);
+        }
+        finally {
+            // Reset current test executable
+            this.debugTestExecutable = "";
+        }
     }
 
     cancel(): void {
