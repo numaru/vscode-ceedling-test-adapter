@@ -26,7 +26,7 @@ export class CeedlingAdapter implements TestAdapter {
     private readonly autorunEmitter = new vscode.EventEmitter<void>();
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
-    private functionRegex: RegExp | undefined; 
+    private functionRegex: RegExp | undefined;
     private watchedFileForAutorunList: string[] = [];
     private watchedFileForReloadList: string[] = [];
     private testSuiteInfo: TestSuiteInfo = {
@@ -48,7 +48,7 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     get autorun(): vscode.Event<void> | undefined {
-         return this.autorunEmitter.event;
+        return this.autorunEmitter.event;
     }
 
     constructor(
@@ -79,7 +79,7 @@ export class CeedlingAdapter implements TestAdapter {
         const headerFiles = await this.getFileList('header');
         const sourceFiles = await this.getFileList('source');
         const testFiles = await this.getFileList('test');
-        
+
         this.watchFilesForAutorun(assemblyFiles);
         this.watchFilesForAutorun(headerFiles);
         this.watchFilesForAutorun(sourceFiles);
@@ -97,8 +97,8 @@ export class CeedlingAdapter implements TestAdapter {
             type: 'started',
             tests: testSuites.map((test) => {
                 return test.id;
-            }
-        )} as TestRunStartedEvent);
+            })
+        } as TestRunStartedEvent);
         this.isCanceled = false;
         for (const testSuite of testSuites) {
             await this.runTestSuite(testSuite);
@@ -117,11 +117,11 @@ export class CeedlingAdapter implements TestAdapter {
                 vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
                 return;
             }
-            
+
             // Determine test suite to run
             const testSuites = this.getTestSuitesFromTestIds(tests);
             const testToExec = testSuites[0].id;
-            
+
             // Execute ceedling test compilation
             const result = await this.execCeedling([`test:${testToExec}`]);
             if (result.error) {
@@ -150,11 +150,11 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     dispose(): void {
-		this.cancel();
-		for (const disposable of this.disposables) {
-			disposable.dispose();
-		}
-		this.disposables = [];
+        this.cancel();
+        for (const disposable of this.disposables) {
+            disposable.dispose();
+        }
+        this.disposables = [];
     }
 
     private async sanityCheck(): Promise<string | void> {
@@ -163,8 +163,8 @@ export class CeedlingAdapter implements TestAdapter {
             const result = await this.execCeedling([`summary`]);
             if (result.error) {
                 return `Ceedling failed to run in the configured shell. ` +
-                       `Please check the ceedlingExplorer.shellPath option.\n` +
-                       `${result.stdout}\n${result.stderr}`
+                    `Please check the ceedlingExplorer.shellPath option.\n` +
+                    `${result.stdout}\n${result.stderr}`
             }
         } finally {
             release();
@@ -172,7 +172,7 @@ export class CeedlingAdapter implements TestAdapter {
         const ymlProjectData = await this.getYmlProjectData();
         if (!ymlProjectData) {
             return `Failed to find the project.yml file. ` +
-                   `Please check the ceedlingExplorer.projectPath option.`;
+                `Please check the ceedlingExplorer.projectPath option.`;
         }
         try {
             if (!ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report')) {
@@ -180,14 +180,14 @@ export class CeedlingAdapter implements TestAdapter {
             }
         } catch (e) {
             return `The required Ceedling plugin 'xml_tests_report' is not enabled. ` +
-                   `You have to edit your 'project.xml' file to enable the plugin.\n` +
-                   `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
-                   `#tool-element-runtime-substitution-notational-substitution`;
+                `You have to edit your 'project.xml' file to enable the plugin.\n` +
+                `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
+                `#tool-element-runtime-substitution-notational-substitution`;
         }
     }
 
     private getConfiguration(): vscode.WorkspaceConfiguration {
-		return vscode.workspace.getConfiguration('ceedlingExplorer', this.workspaceFolder.uri);
+        return vscode.workspace.getConfiguration('ceedlingExplorer', this.workspaceFolder.uri);
     }
 
     private getShellPath(): string | undefined {
@@ -244,7 +244,7 @@ export class CeedlingAdapter implements TestAdapter {
                     // shell: this.getShellPath()
                 },
                 (error, stdout, stderr) => {
-                    resolve({error, stdout, stderr});
+                    resolve({ error, stdout, stderr });
                 },
             )
         })
@@ -279,7 +279,7 @@ export class CeedlingAdapter implements TestAdapter {
         if (ymlProjectData) {
             try {
                 testPrefix = ymlProjectData[':unity'][':test_prefix'];
-            } catch (e) {}
+            } catch (e) { }
         }
         this.functionRegex = new RegExp(
             `^((?:\\s*TEST_CASE\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix}).*)\\s*\\(\\s*(.*)\\s*\\)`,
@@ -437,7 +437,7 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getXmlReportData(): Promise<any | undefined> {
-        const parser = new xml2js.Parser({ explicitArray : false });
+        const parser = new xml2js.Parser({ explicitArray: false });
         return new Promise<void>((resolve) => {
             fs.readFile(this.getXmlReportPath(), 'utf8', (error, data) => {
                 if (error) {
