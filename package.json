@@ -76,6 +76,11 @@
           "type": "string",
           "default": "null",
           "scope": "resource"
+        },
+        "ceedlingExplorer.debugConfiguration": {
+          "description": "Debug configuration to run during test debug.",
+          "type": "string",
+          "scope": "resource"
         }
       }
     }
