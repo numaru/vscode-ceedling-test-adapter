@@ -28,10 +28,11 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 
 ### Options
 
-Property                        | Description
---------------------------------|---------------------------------------------------------------
-`ceedlingExplorer.projectPath`  | The path to the ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
-`ceedlingExplorer.shellPath`    | The path to the shell where ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
+Property                                | Description
+----------------------------------------|---------------------------------------------------------------
+`ceedlingExplorer.projectPath`          | The path to the ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
+`ceedlingExplorer.shellPath`            | The path to the shell where ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
+`ceedlingExplorer.debugConfiguration`   | The Debug configuration to run during debugging. See Debugging for more info.  
 
 ## Commands
 
@@ -44,6 +45,38 @@ ID                                 | Command
 `test-explorer.run-file`           | Run tests in current file
 `test-explorer.run-test-at-cursor` | Run the test at the current cursor position
 `test-explorer.cancel`             | Cancel running tests
+
+## Debugging
+
+To set up debugging, create a new Debug Configuration. `${command:ceedlingExplorer.debugTestExecutable}` 
+can be used access the .out test executable filename (without directory) being ran. Depending on your Ceedling configuration
+these can be found in `projectPath/build/test/out/`. Then, edit the `ceedlingExplorer.debugConfiguration` settings with the name of the Debug Configuration to run during debug.
+
+Note: Individual test debugging is not supported. Instead the entire test file will be ran, so skip or remove breakpoints accordingly.
+
+Example configuration with Native Debug (`webfreak.debug`):
+```json
+{
+    "name": "Ceedling Test Explorer Debug",
+    "type": "cppdbg",
+    "request": "launch",
+    "program": "${workspaceFolder}/build/test/out/${command:ceedlingExplorer.debugTestExecutable}",
+    "args": [],
+    "stopAtEntry": false,
+    "cwd": "${workspaceFolder}",
+    "environment": [],
+    "externalConsole": false,
+    "MIMode": "gdb",
+    "miDebuggerPath": "C:/MinGW/bin/gdb.exe",
+    "setupCommands": [
+        {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+        }
+    ]
+}
+```
 
 ## Troubleshooting
 
