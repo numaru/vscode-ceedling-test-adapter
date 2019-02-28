@@ -123,11 +123,7 @@ export class CeedlingAdapter implements TestAdapter {
             const testToExec = testSuites[0].id;
 
             // Execute ceedling test compilation
-            const result = await this.execCeedling([`test:${testToExec}`]);
-            if (result.error) {
-                vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
-                return;
-            }
+            await this.execCeedling([`test:${testToExec}`]);
 
             // Set current test executable
             this.debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}.out`;
