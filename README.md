@@ -78,6 +78,10 @@ Example configuration with Native Debug (`webfreak.debug`):
 }
 ```
 
+## Known issues
+
+* Cannot use both the junit ceedling plugin and the xml plugin required by this extension because they are using the same ouput filename by default. If the version of the ceedling you are using is greather than 0.28.3, you should be able to configure the output filename. [#20](https://github.com/numaru/vscode-ceedling-test-adapter/issues/20)
+
 ## Troubleshooting
 
 If you think you've found a bug, please [file a bug report](https://github.com/numaru/vscode-ceedling-test-adapter/issues).
