@@ -280,7 +280,9 @@ export class CeedlingAdapter implements TestAdapter {
         let testPrefix = 'test|spec|should';
         if (ymlProjectData) {
             try {
-                testPrefix = ymlProjectData[':unity'][':test_prefix'];
+                let ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
+                if (ymlProjectTestPrefix != undefined)
+                    testPrefix = ymlProjectTestPrefix
             } catch (e) { }
         }
         this.functionRegex = new RegExp(
