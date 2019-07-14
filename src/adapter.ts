@@ -75,7 +75,7 @@ export class CeedlingAdapter implements TestAdapter {
 
         const ymlProjectData = await this.getYmlProjectData();
         this.setBuildDirectory(ymlProjectData);
-        this.setXmlReportPath(ymlProjectData)
+        this.setXmlReportPath(ymlProjectData);
         this.setFunctionRegex(ymlProjectData);
         this.watchFilesForReload([this.getYmlProjectPath()]);
 
