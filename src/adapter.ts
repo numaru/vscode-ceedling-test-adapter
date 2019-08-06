@@ -27,6 +27,7 @@ export class CeedlingAdapter implements TestAdapter {
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
+    private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
     private watchedFileForReloadList: string[] = [];
@@ -73,7 +74,8 @@ export class CeedlingAdapter implements TestAdapter {
         }
 
         const ymlProjectData = await this.getYmlProjectData();
-        this.setXmlReportPath(ymlProjectData)
+        this.setBuildDirectory(ymlProjectData);
+        this.setXmlReportPath(ymlProjectData);
         this.setFunctionRegex(ymlProjectData);
         this.watchFilesForReload([this.getYmlProjectPath()]);
 
@@ -291,6 +293,16 @@ export class CeedlingAdapter implements TestAdapter {
         );
     }
 
+    private setBuildDirectory(ymlProjectData: any = undefined) {
+        let buildDirectory = 'build';
+        if (ymlProjectData) {
+            try {
+                buildDirectory = ymlProjectData[':project'][':build_root'];
+            } catch (e) { }
+        }
+        this.buildDirectory = buildDirectory;
+    }
+
     private setXmlReportPath(ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
         if (ymlProjectData) {
@@ -438,7 +450,7 @@ export class CeedlingAdapter implements TestAdapter {
     private getXmlReportPath(): string {
         return path.resolve(
             this.getProjectPath(),
-            'build', 'artifacts', 'test', this.reportFilename
+            this.buildDirectory, 'artifacts', 'test', this.reportFilename
         );
     }
 
