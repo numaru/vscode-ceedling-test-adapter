@@ -274,9 +274,10 @@ export class CeedlingAdapter implements TestAdapter {
         let testPrefix = 'test|spec|should';
         if (ymlProjectData) {
             try {
-                let ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
-                if (ymlProjectTestPrefix != undefined)
-                    testPrefix = ymlProjectTestPrefix
+                const ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    testPrefix = ymlProjectTestPrefix;
+                }
             } catch (e) { }
         }
         this.functionRegex = new RegExp(
@@ -289,7 +290,10 @@ export class CeedlingAdapter implements TestAdapter {
         let buildDirectory = 'build';
         if (ymlProjectData) {
             try {
-                buildDirectory = ymlProjectData[':project'][':build_root'];
+                const ymlProjectBuildDirectory = ymlProjectData[':project'][':build_root'];
+                if (ymlProjectBuildDirectory != undefined) {
+                    buildDirectory = ymlProjectBuildDirectory;
+                }
             } catch (e) { }
         }
         this.buildDirectory = buildDirectory;
@@ -299,7 +303,10 @@ export class CeedlingAdapter implements TestAdapter {
         let reportFilename = 'report.xml';
         if (ymlProjectData) {
             try {
-                reportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                if (ymlProjectReportFilename != undefined) {
+                    reportFilename = ymlProjectReportFilename;
+                }
             } catch (e) { }
         }
         this.reportFilename = reportFilename;
