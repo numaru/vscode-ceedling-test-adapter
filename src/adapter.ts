@@ -27,6 +27,7 @@ export class CeedlingAdapter implements TestAdapter {
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
+    private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
     private watchedFileForReloadList: string[] = [];
@@ -73,7 +74,8 @@ export class CeedlingAdapter implements TestAdapter {
         }
 
         const ymlProjectData = await this.getYmlProjectData();
-        this.setXmlReportPath(ymlProjectData)
+        this.setBuildDirectory(ymlProjectData);
+        this.setXmlReportPath(ymlProjectData);
         this.setFunctionRegex(ymlProjectData);
         this.watchFilesForReload([this.getYmlProjectPath()]);
 
@@ -225,14 +227,8 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getCeedlingCommand(args: ReadonlyArray<string>) {
-        const shell = this.getShellPath();
         const line = `ceedling ${args}`;
-        if (shell === undefined) {
-            return line;
-        } else {
-            /* This implementation doesn't handle the case where 'cmd' is explicitly selected */
-            return `"${shell}" -c "${line}"`;
-        }
+        return line;
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
@@ -241,9 +237,7 @@ export class CeedlingAdapter implements TestAdapter {
                 this.getCeedlingCommand(args),
                 {
                     cwd: this.getProjectPath(),
-                    // TODO(knu) Replace getCeedlingCommand() trick by the following line when
-                    // Node v10.12 will be available there
-                    // shell: this.getShellPath()
+                    shell: this.getShellPath(),
                 },
                 (error, stdout, stderr) => {
                     resolve({ error, stdout, stderr });
@@ -280,7 +274,10 @@ export class CeedlingAdapter implements TestAdapter {
         let testPrefix = 'test|spec|should';
         if (ymlProjectData) {
             try {
-                testPrefix = ymlProjectData[':unity'][':test_prefix'];
+                const ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    testPrefix = ymlProjectTestPrefix;
+                }
             } catch (e) { }
         }
         this.functionRegex = new RegExp(
@@ -289,11 +286,27 @@ export class CeedlingAdapter implements TestAdapter {
         );
     }
 
+    private setBuildDirectory(ymlProjectData: any = undefined) {
+        let buildDirectory = 'build';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectBuildDirectory = ymlProjectData[':project'][':build_root'];
+                if (ymlProjectBuildDirectory != undefined) {
+                    buildDirectory = ymlProjectBuildDirectory;
+                }
+            } catch (e) { }
+        }
+        this.buildDirectory = buildDirectory;
+    }
+
     private setXmlReportPath(ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
         if (ymlProjectData) {
             try {
-                reportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                if (ymlProjectReportFilename != undefined) {
+                    reportFilename = ymlProjectReportFilename;
+                }
             } catch (e) { }
         }
         this.reportFilename = reportFilename;
@@ -436,7 +449,7 @@ export class CeedlingAdapter implements TestAdapter {
     private getXmlReportPath(): string {
         return path.resolve(
             this.getProjectPath(),
-            'build', 'artifacts', 'test', this.reportFilename
+            this.buildDirectory, 'artifacts', 'test', this.reportFilename
         );
     }
 
