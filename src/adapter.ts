@@ -227,14 +227,8 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getCeedlingCommand(args: ReadonlyArray<string>) {
-        const shell = this.getShellPath();
         const line = `ceedling ${args}`;
-        if (shell === undefined) {
-            return line;
-        } else {
-            /* This implementation doesn't handle the case where 'cmd' is explicitly selected */
-            return `"${shell}" -c "${line}"`;
-        }
+        return line;
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
@@ -243,9 +237,7 @@ export class CeedlingAdapter implements TestAdapter {
                 this.getCeedlingCommand(args),
                 {
                     cwd: this.getProjectPath(),
-                    // TODO(knu) Replace getCeedlingCommand() trick by the following line when
-                    // Node v10.12 will be available there
-                    // shell: this.getShellPath()
+                    shell: this.getShellPath(),
                 },
                 (error, stdout, stderr) => {
                     resolve({ error, stdout, stderr });
