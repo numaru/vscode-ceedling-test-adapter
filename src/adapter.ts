@@ -133,8 +133,12 @@ export class CeedlingAdapter implements TestAdapter {
                 return;
             }
 
+            // Get executable extension
+            const ymlProjectData = await this.getYmlProjectData();
+            const ext = this.getExecutableExtension(ymlProjectData);
+
             // Set current test executable
-            this.debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}.out`;
+            this.debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}${ext}`;
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
@@ -229,6 +233,19 @@ export class CeedlingAdapter implements TestAdapter {
     private getCeedlingCommand(args: ReadonlyArray<string>) {
         const line = `ceedling ${args}`;
         return line;
+    }
+
+    private getExecutableExtension(ymlProjectData: any = undefined) {
+        let ext = process.platform == 'win32' ? '.exe' : '.out';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectExt = ymlProjectData[':extension'][':executable'];
+                if (ymlProjectExt != undefined) {
+                    ext = ymlProjectExt;
+                }
+            } catch (e) { }
+        }
+        return ext;
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
