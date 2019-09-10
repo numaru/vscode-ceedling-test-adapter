@@ -39,7 +39,6 @@ export class CeedlingAdapter implements TestAdapter {
     };
     private isCanceled: boolean = false;
     private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
-    public debugTestExecutable: string = "";
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
@@ -138,7 +137,7 @@ export class CeedlingAdapter implements TestAdapter {
             const ext = this.getExecutableExtension(ymlProjectData);
 
             // Set current test executable
-            this.debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}${ext}`;
+            g_debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}${ext}`;
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
@@ -146,7 +145,7 @@ export class CeedlingAdapter implements TestAdapter {
         }
         finally {
             // Reset current test executable
-            this.debugTestExecutable = "";
+            g_debugTestExecutable = "";
         }
     }
 
@@ -560,4 +559,10 @@ export class CeedlingAdapter implements TestAdapter {
         }
         this.testStatesEmitter.fire({ type: 'suite', suite: testSuite, state: 'completed' } as TestSuiteEvent);
     }
+}
+
+let g_debugTestExecutable: string = "";
+
+export function getDebugTestExecutable(): string {
+    return g_debugTestExecutable;
 }

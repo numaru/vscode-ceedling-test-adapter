@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { TestAdapterRegistrar } from 'vscode-test-adapter-util';
-import { CeedlingAdapter } from './adapter';
+import { CeedlingAdapter, getDebugTestExecutable } from './adapter';
 
-let currentAdapter: CeedlingAdapter | null = null;
 
 function getCurrentDebugConfiguration(): string {
-    const currentExec = currentAdapter != null ? currentAdapter!.debugTestExecutable : "";
+    const currentExec = getDebugTestExecutable();
     if (!currentExec) {
         vscode.window.showErrorMessage("Not currently debugging a Ceedling Test");
         return "";
@@ -21,8 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(new TestAdapterRegistrar(
             testExplorerExtension.exports,
             workspaceFolder => {
-                currentAdapter = new CeedlingAdapter(workspaceFolder);
-                return currentAdapter;
+                return new CeedlingAdapter(workspaceFolder);
             }
         ));
     }
