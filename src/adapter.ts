@@ -136,8 +136,14 @@ export class CeedlingAdapter implements TestAdapter {
             const ymlProjectData = await this.getYmlProjectData();
             const ext = this.getExecutableExtension(ymlProjectData);
 
+            // Get test executable file name without extension
+            const testFileName = `${/([^/]*).c$/.exec(testToExec)![1]}`;
+
             // Set current test executable
-            g_debugTestExecutable = `${/([^/]*).c$/.exec(testToExec)![1]}${ext}`;
+            if (this.detectTestSpecificDefines(ymlProjectData, testFileName))
+                g_debugTestExecutable = `${testFileName}/${testFileName}${ext}`
+            else
+                g_debugTestExecutable = `${testFileName}${ext}`;
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
@@ -245,6 +251,18 @@ export class CeedlingAdapter implements TestAdapter {
             } catch (e) { }
         }
         return ext;
+    }
+
+    private detectTestSpecificDefines(ymlProjectData: any = undefined, testFileName: string) {
+        if (ymlProjectData) {
+            try {
+                const ymlProjectExt = ymlProjectData[':defines'][':' + testFileName];
+                if (ymlProjectExt != undefined) {
+                    return true;
+                }
+            } catch (e) { }
+        }
+        return false;
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {

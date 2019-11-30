@@ -49,8 +49,8 @@ ID                                 | Command
 ## Debugging
 
 To set up debugging, create a new Debug Configuration. `${command:ceedlingExplorer.debugTestExecutable}` 
-can be used access the .out test executable filename (without directory) being ran. Depending on your Ceedling configuration
-these can be found in `projectPath/build/test/out/`. Then, edit the `ceedlingExplorer.debugConfiguration` settings with the name of the Debug Configuration to run during debug.
+can be used access the .out test executable filename being ran. Depending on your Ceedling configuration these can be found in `projectPath/build/test/out/`.
+Then, edit the `ceedlingExplorer.debugConfiguration` settings with the name of the Debug Configuration to run during debug.
 
 Note: Individual test debugging is not supported. Instead the entire test file will be ran, so skip or remove breakpoints accordingly.
 
