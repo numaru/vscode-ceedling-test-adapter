@@ -62,6 +62,14 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
+        // callback receive when a config property is modified
+        vscode.workspace.onDidChangeConfiguration(event => {
+            let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
+            let affectedPrettyTestFileLabel= event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
+            if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
+               this.load();
+            }
+        })
     }
 
     async load(): Promise<void> {
