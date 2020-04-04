@@ -40,6 +40,8 @@ export class CeedlingAdapter implements TestAdapter {
         children: []
     };
     private isCanceled: boolean = false;
+    private isPrettyTestLabelEnable: boolean = false;
+    private isPrettyTestFileLabelEnable: boolean = false;
     private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -398,24 +400,25 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private setTestLabel(testName: string): string | undefined{
-        let testLabel  = testName;
-
-        const labelFunctionRegex = this.getTestLabelRegex();
-        let testLabelMatches = labelFunctionRegex.exec(testName);
-        if( testLabelMatches != null){
-            testLabel = testLabelMatches[1];
+        let testLabel = testName;
+        if (this.isPrettyTestLabelEnable) {
+            const labelFunctionRegex = this.getTestLabelRegex();
+            let testLabelMatches = labelFunctionRegex.exec(testName);
+            if (testLabelMatches != null) {
+                testLabel = testLabelMatches[1];
+            }
         }
-
         return testLabel;
     }
 
     private setFileLabel(fileName : string): string {
         let fileLabel = fileName;
-        
-        const labelFileRegex = this.getFileLabelRegex();
-        let labelMatches = labelFileRegex.exec(fileName);
-        if( labelMatches != null){
-            fileLabel = labelMatches[1];
+        if (this.isPrettyTestFileLabelEnable) {
+            const labelFileRegex = this.getFileLabelRegex();
+            let labelMatches = labelFileRegex.exec(fileName);
+            if (labelMatches != null) {
+                fileLabel = labelMatches[1];
+            }
         }
         return fileLabel;
     }
@@ -427,6 +430,10 @@ export class CeedlingAdapter implements TestAdapter {
             label: 'Ceedling',
             children: []
         } as TestSuiteInfo;
+        /* get labels configuration */
+        this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
+        this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
+        
         for (const file of files) {
             const fullPath = path.resolve(this.getProjectPath(), file);
             const fileLabel = this.setFileLabel(file);

@@ -81,6 +81,18 @@
           "description": "Debug configuration to run during test debug.",
           "type": "string",
           "scope": "resource"
+        },
+        "ceedlingExplorer.prettyTestLabel": {
+          "markdownDescription": "Test label is prettier in the test explorer. E.g. inactive `test_BlinkTaskShouldToggleLed`, active `BlinkTaskShouldToggleLed`",
+          "type": "boolean",
+          "default": true,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.prettyTestFileLabel": {
+          "markdownDescription": "Test file label is prettier in the test explorer. E.g. inactive `test/LEDs/test_BlinkTask.c`, active `BlinkTask`",
+          "type": "boolean",
+          "default": true,
+          "scope": "resource"
         }
       }
     }
