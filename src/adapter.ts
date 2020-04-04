@@ -27,6 +27,8 @@ export class CeedlingAdapter implements TestAdapter {
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
+    private fileLabelRegex: RegExp | undefined;
+    private testLabelRegex: RegExp | undefined;
     private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
@@ -76,6 +78,8 @@ export class CeedlingAdapter implements TestAdapter {
         this.setBuildDirectory(ymlProjectData);
         this.setXmlReportPath(ymlProjectData);
         this.setFunctionRegex(ymlProjectData);
+        this.setFileLabelRegex(ymlProjectData);
+        this.setTestLabelRegex(ymlProjectData);
         this.watchFilesForReload([this.getYmlProjectPath()]);
 
         const assemblyFiles = await this.getFileList('assembly');
@@ -353,6 +357,69 @@ export class CeedlingAdapter implements TestAdapter {
         return this.functionRegex as RegExp;
     }
 
+    private setFileLabelRegex(ymlProjectData: any = undefined) {
+        let filePrefix = 'test_';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectTestPrefix = ymlProjectData[':project'][':test_file_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    filePrefix = ymlProjectTestPrefix;
+                }
+            } catch (e) { }
+        }
+        this.fileLabelRegex = new RegExp(`.*\/${filePrefix}(.*).c`, 'i');
+    }
+
+    private getFileLabelRegex(): RegExp {
+        if (!this.fileLabelRegex) {
+            this.setFileLabelRegex();
+        }
+        return this.fileLabelRegex as RegExp;
+    }
+
+    private setTestLabelRegex(ymlProjectData: any = undefined) {
+        let testPrefix = 'test|spec|should';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    testPrefix = ymlProjectTestPrefix;
+                }
+            } catch (e) { }
+        }
+        this.testLabelRegex = new RegExp(`(?:${testPrefix})_*(.*)`);
+    }
+
+    private getTestLabelRegex(): RegExp {
+        if (!this.testLabelRegex) {
+            this.setTestLabelRegex();
+        }
+        return this.testLabelRegex as RegExp;
+    }
+
+    private setTestLabel(testName: string): string | undefined{
+        let testLabel  = testName;
+
+        const labelFunctionRegex = this.getTestLabelRegex();
+        let testLabelMatches = labelFunctionRegex.exec(testName);
+        if( testLabelMatches != null){
+            testLabel = testLabelMatches[1];
+        }
+
+        return testLabel;
+    }
+
+    private setFileLabel(fileName : string): string {
+        let fileLabel = fileName;
+        
+        const labelFileRegex = this.getFileLabelRegex();
+        let labelMatches = labelFileRegex.exec(fileName);
+        if( labelMatches != null){
+            fileLabel = labelMatches[1];
+        }
+        return fileLabel;
+    }
+
     private setTestSuiteInfo(files: string[]) {
         this.testSuiteInfo = {
             type: 'suite',
@@ -362,10 +429,11 @@ export class CeedlingAdapter implements TestAdapter {
         } as TestSuiteInfo;
         for (const file of files) {
             const fullPath = path.resolve(this.getProjectPath(), file);
+            const fileLabel = this.setFileLabel(file);
             const currentTestSuitInfo: TestSuiteInfo = {
                 type: 'suite',
                 id: file,
-                label: file,
+                label: fileLabel,
                 file: fullPath,
                 children: []
             };
@@ -374,12 +442,13 @@ export class CeedlingAdapter implements TestAdapter {
             let match = testRegex.exec(fileText);
             while (match != null) {
                 const testName = match[2];
+                const testLabel = this.setTestLabel(testName);
                 let line = fileText.substr(0, match.index).split('\n').length - 1;
                 line = line + match[0].substr(0, match[0].search(/\S/g)).split('\n').length - 1;
                 currentTestSuitInfo.children.push({
                     type: 'test',
                     id: file + '::' + testName,
-                    label: testName,
+                    label: testLabel,
                     file: fullPath,
                     line: line
                 } as TestInfo)
