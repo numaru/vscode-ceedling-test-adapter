@@ -65,7 +65,7 @@ export class CeedlingAdapter implements TestAdapter {
         // callback receive when a config property is modified
         vscode.workspace.onDidChangeConfiguration(event => {
             let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
-            let affectedPrettyTestFileLabel= event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
+            let affectedPrettyTestFileLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
             if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
                this.load();
             }
@@ -407,7 +407,7 @@ export class CeedlingAdapter implements TestAdapter {
         return this.testLabelRegex as RegExp;
     }
 
-    private setTestLabel(testName: string): string | undefined{
+    private setTestLabel(testName: string): string | undefined {
         let testLabel = testName;
         if (this.isPrettyTestLabelEnable) {
             const labelFunctionRegex = this.getTestLabelRegex();
@@ -419,7 +419,7 @@ export class CeedlingAdapter implements TestAdapter {
         return testLabel;
     }
 
-    private setFileLabel(fileName : string): string {
+    private setFileLabel(fileName: string): string {
         let fileLabel = fileName;
         if (this.isPrettyTestFileLabelEnable) {
             const labelFileRegex = this.getFileLabelRegex();
