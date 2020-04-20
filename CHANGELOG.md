@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.5.0] - 2020-04-20
+
+### Added
+
+* Add the `ceedlingExplorer.testCommandArgs` option to be able to run `gcov`
+* Add the `ceedlingExplorer.prettyTestLabel` and `ceedlingExplorer.prettyTestFileLabel` options for the sake of beauty
+
 ## [1.4.2] - 2019-11-30
 
 ### Fixed
@@ -86,7 +93,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.4.2...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.0...develop
+[1.5.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.4.2...v1.5.0
 [1.4.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.3.0...v1.4.0
