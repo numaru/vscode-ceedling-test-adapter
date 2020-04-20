@@ -27,6 +27,8 @@ export class CeedlingAdapter implements TestAdapter {
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
+    private fileLabelRegex: RegExp | undefined;
+    private testLabelRegex: RegExp | undefined;
     private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
@@ -38,6 +40,8 @@ export class CeedlingAdapter implements TestAdapter {
         children: []
     };
     private isCanceled: boolean = false;
+    private isPrettyTestLabelEnable: boolean = false;
+    private isPrettyTestFileLabelEnable: boolean = false;
     private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
@@ -58,6 +62,14 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
+        // callback receive when a config property is modified
+        vscode.workspace.onDidChangeConfiguration(event => {
+            let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
+            let affectedPrettyTestFileLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
+            if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
+                this.load();
+            }
+        })
     }
 
     async load(): Promise<void> {
@@ -76,6 +88,8 @@ export class CeedlingAdapter implements TestAdapter {
         this.setBuildDirectory(ymlProjectData);
         this.setXmlReportPath(ymlProjectData);
         this.setFunctionRegex(ymlProjectData);
+        this.setFileLabelRegex(ymlProjectData);
+        this.setTestLabelRegex(ymlProjectData);
         this.watchFilesForReload([this.getYmlProjectPath()]);
 
         const assemblyFiles = await this.getFileList('assembly');
@@ -126,7 +140,8 @@ export class CeedlingAdapter implements TestAdapter {
             const testToExec = testSuites[0].id;
 
             // Execute ceedling test compilation
-            const result = await this.execCeedling([`test:${testToExec}`]);
+            const args = this.getTestCommandArgs(testToExec);
+            const result = await this.execCeedling(args);
             if (result.error && /ERROR: Ceedling Failed/.test(result.stdout)) {
                 vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
                 return;
@@ -211,10 +226,12 @@ export class CeedlingAdapter implements TestAdapter {
     private getProjectPath(): string {
         const defaultProjectPath = '.';
         const projectPath = this.getConfiguration().get<string>('projectPath', defaultProjectPath);
-        return path.resolve(
-            this.workspaceFolder.uri.fsPath,
-            projectPath !== "null" ? projectPath : defaultProjectPath
-        );
+        let workspacePath = this.workspaceFolder.uri.fsPath;
+        // Workaround: Uppercase disk letters are required on windows to be able to generate xml gcov reports
+        if (process.platform == 'win32') {
+            workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
+        }
+        return path.resolve(workspacePath, projectPath !== "null" ? projectPath : defaultProjectPath);
     }
 
     private async getFileList(fileType: string): Promise<string[]> {
@@ -236,8 +253,16 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getCeedlingCommand(args: ReadonlyArray<string>) {
-        const line = `ceedling ${args}`;
+        const line = `ceedling ${args.join(" ")}`;
         return line;
+    }
+
+    private getTestCommandArgs(testToExec: string): Array<string> {
+        const defaultTestCommandArgs = ["test:${TEST_ID}"];
+        const testCommandArgs = this.getConfiguration()
+            .get<Array<string>>('testCommandArgs', defaultTestCommandArgs)
+            .map(x => x.replace("${TEST_ID}", testToExec));
+        return testCommandArgs;
     }
 
     private getExecutableExtension(ymlProjectData: any = undefined) {
@@ -353,6 +378,70 @@ export class CeedlingAdapter implements TestAdapter {
         return this.functionRegex as RegExp;
     }
 
+    private setFileLabelRegex(ymlProjectData: any = undefined) {
+        let filePrefix = 'test_';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectTestPrefix = ymlProjectData[':project'][':test_file_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    filePrefix = ymlProjectTestPrefix;
+                }
+            } catch (e) { }
+        }
+        this.fileLabelRegex = new RegExp(`.*\/${filePrefix}(.*).c`, 'i');
+    }
+
+    private getFileLabelRegex(): RegExp {
+        if (!this.fileLabelRegex) {
+            this.setFileLabelRegex();
+        }
+        return this.fileLabelRegex as RegExp;
+    }
+
+    private setTestLabelRegex(ymlProjectData: any = undefined) {
+        let testPrefix = 'test|spec|should';
+        if (ymlProjectData) {
+            try {
+                const ymlProjectTestPrefix = ymlProjectData[':unity'][':test_prefix'];
+                if (ymlProjectTestPrefix != undefined) {
+                    testPrefix = ymlProjectTestPrefix;
+                }
+            } catch (e) { }
+        }
+        this.testLabelRegex = new RegExp(`(?:${testPrefix})_*(.*)`);
+    }
+
+    private getTestLabelRegex(): RegExp {
+        if (!this.testLabelRegex) {
+            this.setTestLabelRegex();
+        }
+        return this.testLabelRegex as RegExp;
+    }
+
+    private setTestLabel(testName: string): string | undefined {
+        let testLabel = testName;
+        if (this.isPrettyTestLabelEnable) {
+            const labelFunctionRegex = this.getTestLabelRegex();
+            let testLabelMatches = labelFunctionRegex.exec(testName);
+            if (testLabelMatches != null) {
+                testLabel = testLabelMatches[1];
+            }
+        }
+        return testLabel;
+    }
+
+    private setFileLabel(fileName: string): string {
+        let fileLabel = fileName;
+        if (this.isPrettyTestFileLabelEnable) {
+            const labelFileRegex = this.getFileLabelRegex();
+            let labelMatches = labelFileRegex.exec(fileName);
+            if (labelMatches != null) {
+                fileLabel = labelMatches[1];
+            }
+        }
+        return fileLabel;
+    }
+
     private setTestSuiteInfo(files: string[]) {
         this.testSuiteInfo = {
             type: 'suite',
@@ -360,12 +449,17 @@ export class CeedlingAdapter implements TestAdapter {
             label: 'Ceedling',
             children: []
         } as TestSuiteInfo;
+        /* get labels configuration */
+        this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
+        this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
+
         for (const file of files) {
             const fullPath = path.resolve(this.getProjectPath(), file);
+            const fileLabel = this.setFileLabel(file);
             const currentTestSuitInfo: TestSuiteInfo = {
                 type: 'suite',
                 id: file,
-                label: file,
+                label: fileLabel,
                 file: fullPath,
                 children: []
             };
@@ -374,12 +468,13 @@ export class CeedlingAdapter implements TestAdapter {
             let match = testRegex.exec(fileText);
             while (match != null) {
                 const testName = match[2];
+                const testLabel = this.setTestLabel(testName);
                 let line = fileText.substr(0, match.index).split('\n').length - 1;
                 line = line + match[0].substr(0, match[0].search(/\S/g)).split('\n').length - 1;
                 currentTestSuitInfo.children.push({
                     type: 'test',
                     id: file + '::' + testName,
-                    label: testName,
+                    label: testLabel,
                     file: fullPath,
                     line: line
                 } as TestInfo)
@@ -533,7 +628,8 @@ export class CeedlingAdapter implements TestAdapter {
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const result = await this.execCeedling([`test:${testSuite.label}`]);
+            const args = this.getTestCommandArgs(testSuite.label);
+            const result = await this.execCeedling(args);
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return fail */
