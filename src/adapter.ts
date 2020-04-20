@@ -226,10 +226,12 @@ export class CeedlingAdapter implements TestAdapter {
     private getProjectPath(): string {
         const defaultProjectPath = '.';
         const projectPath = this.getConfiguration().get<string>('projectPath', defaultProjectPath);
-        return path.resolve(
-            this.workspaceFolder.uri.fsPath,
-            projectPath !== "null" ? projectPath : defaultProjectPath
-        );
+        let workspacePath = this.workspaceFolder.uri.fsPath;
+        // Workaround: Uppercase disk letters are required on windows to be able to generate xml gcov reports
+        if (process.platform == 'win32') {
+            workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
+        }
+        return path.resolve(workspacePath, projectPath !== "null" ? projectPath : defaultProjectPath);
     }
 
     private async getFileList(fileType: string): Promise<string[]> {
