@@ -93,6 +93,14 @@
           "type": "boolean",
           "default": true,
           "scope": "resource"
+        },
+        "ceedlingExplorer.testCommandArgs": {
+          "markdownDescription": "The command line arguments used to run the ceedling tests",
+          "type": "array",
+          "default": [
+            "test:${TEST_ID}"
+          ],
+          "scope": "resource"
         }
       }
     }
