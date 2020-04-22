@@ -340,7 +340,7 @@ export class CeedlingAdapter implements TestAdapter {
             } catch (e) { }
         }
         this.functionRegex = new RegExp(
-            `^((?:\\s*TEST_CASE\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix}).*)\\s*\\(\\s*(.*)\\s*\\)`,
+            `^((?:\\s*TEST_CASE\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
             'gm'
         );
     }
@@ -442,6 +442,10 @@ export class CeedlingAdapter implements TestAdapter {
         return fileLabel;
     }
 
+    private parseMultilineFunctionName(functionName: string): string {
+        return functionName.replace(/\\\s*/g, '');
+    }
+
     private setTestSuiteInfo(files: string[]) {
         this.testSuiteInfo = {
             type: 'suite',
@@ -467,7 +471,8 @@ export class CeedlingAdapter implements TestAdapter {
             const fileText = fs.readFileSync(fullPath, 'utf8');
             let match = testRegex.exec(fileText);
             while (match != null) {
-                const testName = match[2];
+                let testName = match[2];
+                testName = this.parseMultilineFunctionName(testName);
                 const testLabel = this.setTestLabel(testName);
                 let line = fileText.substr(0, match.index).split('\n').length - 1;
                 line = line + match[0].substr(0, match[0].search(/\S/g)).split('\n').length - 1;
