@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Fixed
+
+* Support for multiline test function name
+
 ## [1.5.0] - 2020-04-20
 
 ### Added
