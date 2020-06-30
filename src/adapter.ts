@@ -637,10 +637,10 @@ export class CeedlingAdapter implements TestAdapter {
             const result = await this.execCeedling(args);
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
-                /* The tests are not run so return fail */
+                /* The tests are not run so return error */
                 const message: string = `${result.stdout}\n${result.stderr}`;
                 for (const child of testSuite.children) {
-                    this.testStatesEmitter.fire({ type: 'test', test: child, state: 'failed', message: message } as TestEvent);
+                    this.testStatesEmitter.fire({ type: 'test', test: child, state: 'errored', message: message } as TestEvent);
                 }
             } else {
                 /* Send the events from the xml report data */
