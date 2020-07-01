@@ -634,10 +634,10 @@ export class CeedlingAdapter implements TestAdapter {
             /* Run the test and get stdout */
             const args = this.getTestCommandArgs(testSuite.label);
             const result = await this.execCeedling(args);
+            const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */
-                const message: string = `${result.stdout}\n${result.stderr}`;
                 for (const child of testSuite.children) {
                     this.testStatesEmitter.fire({ type: 'test', test: child, state: 'errored', message: message } as TestEvent);
                 }
@@ -648,7 +648,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: ignoredTest["Name"],
                         state: 'skipped',
-                        message: result.stdout
+                        message: message
                     } as TestEvent);
                 }
                 for (const succefullTest of this.getTestListDataFromXmlReport(xmlReportData, "SuccessfulTests")) {
@@ -656,7 +656,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: succefullTest["Name"],
                         state: 'passed',
-                        message: result.stdout
+                        message: message
                     } as TestEvent);
                 }
                 for (const failedTest of this.getTestListDataFromXmlReport(xmlReportData, "FailedTests")) {
@@ -664,7 +664,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: failedTest["Name"],
                         state: 'failed',
-                        message: result.stdout,
+                        message: message,
                         decorations: [{
                             line: parseInt(failedTest["Location"]["Line"]) - 1,
                             message: failedTest["Message"].toString()
