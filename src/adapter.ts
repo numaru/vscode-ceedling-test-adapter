@@ -100,7 +100,6 @@ export class CeedlingAdapter implements TestAdapter {
         this.watchFilesForAutorun(assemblyFiles);
         this.watchFilesForAutorun(headerFiles);
         this.watchFilesForAutorun(sourceFiles);
-        this.watchFilesForAutorun(testFiles);
 
         this.watchFilesForReload(testFiles);
 
