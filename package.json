@@ -101,6 +101,54 @@
             "test:${TEST_ID}"
           ],
           "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.matchStdOut": {
+          "markdownDescription": "Match stdout for problems",
+          "type": "boolean",
+          "default": true,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.matchStdErr": {
+          "markdownDescription": "Match stderr for problems",
+          "type": "boolean",
+          "default": true,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.regexp": {
+          "markdownDescription": "The regular expression to find an error, warning or info in the output. Default is for GCC.",
+          "type": "string",
+          "default": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.file": {
+          "markdownDescription": "Index of the filename. Defaults to 1.",
+          "type": "integer",
+          "default": 1,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.line": {
+          "markdownDescription": "Index of the problem's line. Defaults to 2.",
+          "type": "integer",
+          "default": 2,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.column": {
+          "markdownDescription": "Index of the problem's line character. Defaults to 3.",
+          "type": "integer",
+          "default": 3,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.severity": {
+          "markdownDescription": "Index of the problem's severity. Defaults to 4.",
+          "type": "integer",
+          "default": 4,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatcher.pattern.message": {
+          "markdownDescription": "Index of the message. Defaults to 5.",
+          "type": "integer",
+          "default": 5,
+          "scope": "resource"
         }
       }
     }
