@@ -102,53 +102,66 @@
           ],
           "scope": "resource"
         },
-        "ceedlingExplorer.problemMatcher.matchStdOut": {
-          "markdownDescription": "Match stdout for problems",
-          "type": "boolean",
-          "default": true,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.matchStdErr": {
-          "markdownDescription": "Match stderr for problems",
-          "type": "boolean",
-          "default": true,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.regexp": {
-          "markdownDescription": "The regular expression to find an error, warning or info in the output. Default is for GCC.",
-          "type": "string",
-          "default": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.file": {
-          "markdownDescription": "Index of the filename. Defaults to 1.",
-          "type": "integer",
-          "default": 1,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.line": {
-          "markdownDescription": "Index of the problem's line. Defaults to 2.",
-          "type": "integer",
-          "default": 2,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.column": {
-          "markdownDescription": "Index of the problem's line character. Defaults to 3.",
-          "type": "integer",
-          "default": 3,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.severity": {
-          "markdownDescription": "Index of the problem's severity. Defaults to 4.",
-          "type": "integer",
-          "default": 4,
-          "scope": "resource"
-        },
-        "ceedlingExplorer.problemMatcher.pattern.message": {
-          "markdownDescription": "Index of the message. Defaults to 5.",
-          "type": "integer",
-          "default": 5,
-          "scope": "resource"
+        "ceedlingExplorer.problemMatcher": {
+          "markdownDescription": "Scans ceedling output text for known warning or error strings and reports these inline in the editor and in the Problems panel.&nbsp;Tries to resemble VSCode Tasks problemMatchers mechanism.",
+          "type": "object",
+          "scope": "resource",
+          "properties": {
+            "enabled": {
+              "description": "Is problemMatcher scan enabled or not.",
+              "type": "boolean",
+              "default": true,
+              "scope": "resource"
+            },
+            "scanStdout": {
+              "description": "Scan stdout output for problems.",
+              "type": "boolean",
+              "default": true,
+              "scope": "resource"
+            },
+            "scanStderr": {
+              "description": "Scan stderr output for problems.",
+              "type": "boolean",
+              "default": true,
+              "scope": "resource"
+            },
+            "pattern.regexp": {
+              "description": "The regular expression to find an error, warning or info in the output. Default is for GCC.",
+              "type": "string",
+              "default": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+              "scope": "resource"
+            },
+            "pattern.file": {
+              "description": "Index of the problem's filename.",
+              "type": "integer",
+              "default": 1,
+              "scope": "resource"
+            },
+            "pattern.line": {
+              "description": "Index of the problem's line.",
+              "type": "integer",
+              "default": 2,
+              "scope": "resource"
+            },
+            "pattern.column": {
+              "description": "Index of the problem's line character.",
+              "type": "integer",
+              "default": 3,
+              "scope": "resource"
+            },
+            "pattern.severity": {
+              "description": "Index of the problem's severity.",
+              "type": "integer",
+              "default": 4,
+              "scope": "resource"
+            },
+            "pattern.message": {
+              "description": "Index of the problem's message.",
+              "type": "integer",
+              "default": 5,
+              "scope": "resource"
+            }
+          }
         }
       }
     }
