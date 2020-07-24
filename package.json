@@ -102,64 +102,103 @@
           ],
           "scope": "resource"
         },
-        "ceedlingExplorer.problemMatcher": {
+        "ceedlingExplorer.problemMatching": {
           "markdownDescription": "Scans ceedling output text for known warning or error strings and reports these inline in the editor and in the Problems panel.&nbsp;Tries to resemble VSCode Tasks problemMatchers mechanism.",
           "type": "object",
           "scope": "resource",
           "properties": {
             "enabled": {
-              "description": "Is problemMatcher scan enabled or not.",
+              "description": "Is problemMatching scan enabled or not.",
               "type": "boolean",
-              "default": true,
-              "scope": "resource"
+              "default": false
             },
             "scanStdout": {
               "description": "Scan stdout output for problems.",
               "type": "boolean",
-              "default": true,
-              "scope": "resource"
+              "default": true
             },
             "scanStderr": {
               "description": "Scan stderr output for problems.",
               "type": "boolean",
-              "default": true,
-              "scope": "resource"
+              "default": true
             },
-            "pattern.regexp": {
-              "description": "The regular expression to find an error, warning or info in the output. Default is for GCC.",
-              "type": "string",
-              "default": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
-              "scope": "resource"
-            },
-            "pattern.file": {
-              "description": "Index of the problem's filename.",
-              "type": "integer",
-              "default": 1,
-              "scope": "resource"
-            },
-            "pattern.line": {
-              "description": "Index of the problem's line.",
-              "type": "integer",
-              "default": 2,
-              "scope": "resource"
-            },
-            "pattern.column": {
-              "description": "Index of the problem's line character.",
-              "type": "integer",
-              "default": 3,
-              "scope": "resource"
-            },
-            "pattern.severity": {
-              "description": "Index of the problem's severity.",
-              "type": "integer",
-              "default": 4,
-              "scope": "resource"
-            },
-            "pattern.message": {
-              "description": "Index of the problem's message.",
-              "type": "integer",
-              "default": 5,
-              "scope": "resource"
+            "patterns": {
+              "description": "Problem matching patterns.",
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "object",
+                "title": "Problem matching pattern.",
+                "properties": {
+                  "severity": {
+                    "description": "Severity of messages found by this pattern.",
+                    "type": "string",
+                    "enum": [
+                      "error",
+                      "warning",
+                      "info"
+                    ],
+                    "default": "info"
+                  },
+                  "fileLocation": {
+                    "description": "Type of file locations found by this pattern. For relative paths, relativeFileLocation value is used.",
+                    "type": "string",
+                    "enum": [
+                      "absolute",
+                      "relative",
+                      "autoDetect"
+                    ],
+                    "enumDescriptions": [
+                      "Filename considered to contain absolute path to file.",
+                      "Filename considered to contain path relative to relativeFileLocation.",
+                      "If file at filename as absolute path exists, consider filename to be absolute, else consider it relative to relativeFileLocation."
+                    ],
+                    "default": "autoDetect"
+                  },
+                  "relativeFileLocation": {
+                    "description": "Used to determine file's absolute path if fileLocation is relative or autoDetect.",
+                    "type": [ "string", "null" ],
+                    "default": null
+                  },
+                  "regexp": {
+                    "description": "The regular expression to find an error, warning or info in the output.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Index of the problem's message in the regular expression.",
+                    "type": "integer"
+                  },
+                  "code": {
+                    "description": "Index of the problem's code in the regular expression.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "file": {
+                    "description": "Index of the problem's filename in the regular expression.",
+                    "type": "integer"
+                  },
+                  "line": {
+                    "description": "Index of the problem's (first) line in the regular expression.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "lastLine": {
+                    "description": "Index of the problem's last line in the regular expression.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "column": {
+                    "description": "Index of the problem's (first) column in the regular expression.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "lastColumn": {
+                    "description": "Index of the problem's last column in the regular expression.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  }
+                }
+              }
             }
           }
         }
