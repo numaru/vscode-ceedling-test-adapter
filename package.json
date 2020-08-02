@@ -112,16 +112,6 @@
               "type": "boolean",
               "default": false
             },
-            "scanStdout": {
-              "description": "Scan stdout output for problems.",
-              "type": "boolean",
-              "default": true
-            },
-            "scanStderr": {
-              "description": "Scan stderr output for problems.",
-              "type": "boolean",
-              "default": true
-            },
             "patterns": {
               "description": "Problem matching patterns.",
               "type": "array",
@@ -129,7 +119,18 @@
               "items": {
                 "type": "object",
                 "title": "Problem matching pattern.",
+                "required": [ "regexp", "message", "file" ],
                 "properties": {
+                  "scanStdout": {
+                    "description": "Scan stdout output for problems.",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "scanStderr": {
+                    "description": "Scan stderr output for problems.",
+                    "type": "boolean",
+                    "default": true
+                  },
                   "severity": {
                     "description": "Severity of messages found by this pattern.",
                     "type": "string",
@@ -140,25 +141,10 @@
                     ],
                     "default": "info"
                   },
-                  "fileLocation": {
-                    "description": "Type of file locations found by this pattern. For relative paths, relativeFileLocation value is used.",
+                  "filePrefix": {
+                    "markdownDescription": "Used to determine file's absolute path if file location is relative.&nbsp;${projectPath} replaced with project path. Not used if empty or not defined.",
                     "type": "string",
-                    "enum": [
-                      "absolute",
-                      "relative",
-                      "autoDetect"
-                    ],
-                    "enumDescriptions": [
-                      "Filename considered to contain absolute path to file.",
-                      "Filename considered to contain path relative to relativeFileLocation.",
-                      "If file at filename as absolute path exists, consider filename to be absolute, else consider it relative to relativeFileLocation."
-                    ],
-                    "default": "autoDetect"
-                  },
-                  "relativeFileLocation": {
-                    "description": "Used to determine file's absolute path if fileLocation is relative or autoDetect.",
-                    "type": [ "string", "null" ],
-                    "default": null
+                    "default": ""
                   },
                   "regexp": {
                     "description": "The regular expression to find an error, warning or info in the output.",
@@ -168,32 +154,27 @@
                     "description": "Index of the problem's message in the regular expression.",
                     "type": "integer"
                   },
-                  "code": {
-                    "description": "Index of the problem's code in the regular expression.",
-                    "type": [ "integer", "null" ],
-                    "default": null
-                  },
                   "file": {
                     "description": "Index of the problem's filename in the regular expression.",
                     "type": "integer"
                   },
                   "line": {
-                    "description": "Index of the problem's (first) line in the regular expression.",
+                    "description": "Index of the problem's (first) line in the regular expression. Not used if null or not defined.",
                     "type": [ "integer", "null" ],
                     "default": null
                   },
                   "lastLine": {
-                    "description": "Index of the problem's last line in the regular expression.",
+                    "description": "Index of the problem's last line in the regular expression. Not used if null or not defined.",
                     "type": [ "integer", "null" ],
                     "default": null
                   },
                   "column": {
-                    "description": "Index of the problem's (first) column in the regular expression.",
+                    "description": "Index of the problem's (first) column in the regular expression. Not used if null or not defined.",
                     "type": [ "integer", "null" ],
                     "default": null
                   },
                   "lastColumn": {
-                    "description": "Index of the problem's last column in the regular expression.",
+                    "description": "Index of the problem's last column in the regular expression. Not used if null or not defined.",
                     "type": [ "integer", "null" ],
                     "default": null
                   }

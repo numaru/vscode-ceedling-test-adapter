@@ -17,6 +17,7 @@ import {
     TestSuiteInfo,
     TestInfo
 } from 'vscode-test-adapter-api';
+import { ProblemMatcher, ProblemMatchingPattern } from './problemMatcher';
 
 export class CeedlingAdapter implements TestAdapter {
     private disposables: { dispose(): void }[] = [];
@@ -24,6 +25,8 @@ export class CeedlingAdapter implements TestAdapter {
     private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
     private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
     private readonly autorunEmitter = new vscode.EventEmitter<void>();
+
+    private readonly problemMatcher = new ProblemMatcher();
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
@@ -62,8 +65,15 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
+        this.disposables.push(this.problemMatcher);
         // callback receive when a config property is modified
         vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("ceedlingExplorer.problemMatching")) {
+                if (!this.getConfiguration().get<boolean>('problemMatching.enabled', false)) {
+                    this.problemMatcher.clear();
+                }
+            }
+
             let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
             let affectedPrettyTestFileLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
             if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
@@ -452,6 +462,9 @@ export class CeedlingAdapter implements TestAdapter {
             label: 'Ceedling',
             children: []
         } as TestSuiteInfo;
+
+        this.problemMatcher.setActualIds(files);
+
         /* get labels configuration */
         this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
         this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
@@ -635,6 +648,11 @@ export class CeedlingAdapter implements TestAdapter {
             const args = this.getTestCommandArgs(testSuite.label);
             const result = await this.execCeedling(args);
             const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
+            if (this.getConfiguration().get<boolean>('problemMatching.enabled', false))
+            {
+                this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
+                    this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []));
+            }
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */
