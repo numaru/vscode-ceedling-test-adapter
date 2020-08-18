@@ -101,7 +101,7 @@ export class ProblemMatcher {
             return null;
         }
 
-        const fileValue = (filePrefix === '') ? matches[file] : path.resolve(filePrefix, matches[file]);
+        const fileValue = (filePrefix === '') ? path.normalize(matches[file]) : path.join(path.normalize(filePrefix), path.normalize(matches[file]));
         const messageValue = matches[message];
         const lineValue = (line !== null) ? Number(matches[line]) : undefined;
         const lastLineValue = (lastLine !== null) ? Number(matches[lastLine]) : undefined;
