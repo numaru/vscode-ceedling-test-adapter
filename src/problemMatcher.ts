@@ -42,7 +42,7 @@ export class ProblemMatcher {
     }
 
     private normalizePatterns(patterns: ProblemMatchingPattern[]): ProblemMatchingPattern[] {
-        //I'm not a TypeScript expert, but it seems like VSCode has some bug:
+        //I'm not a TypeScript expert, but it seems like VSCode (v1.48.0; 20 august 2020) has some bug:
         //"WorkspaceConfiguration.get<T>(section: string, defaultValue: T): T" could return anything,
         //requested type not matters. That's why I need to normalize it's output.
         let result: ProblemMatchingPattern[] = [];
@@ -87,9 +87,6 @@ export class ProblemMatcher {
     }
 
     private addPatternsPreset(patterns: ProblemMatchingPattern[], patternsPreset: string): ProblemMatchingPattern[] {
-        //I'm not a TypeScript expert, but it seems like VSCode has some bug:
-        //"WorkspaceConfiguration.get<T>(section: string, defaultValue: T): T" could return anything,
-        //requested type not matters. That's why I need to normalize it's output.
         let preset: ProblemMatchingPattern[] = [];
 
         if (patternsPreset === "gcc")
