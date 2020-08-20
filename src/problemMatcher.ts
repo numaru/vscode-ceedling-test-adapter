@@ -86,6 +86,60 @@ export class ProblemMatcher {
         return result;
     }
 
+    private addPatternsPreset(patterns: ProblemMatchingPattern[], patternsPreset: string): ProblemMatchingPattern[] {
+        //I'm not a TypeScript expert, but it seems like VSCode has some bug:
+        //"WorkspaceConfiguration.get<T>(section: string, defaultValue: T): T" could return anything,
+        //requested type not matters. That's why I need to normalize it's output.
+        let preset: ProblemMatchingPattern[] = [];
+
+        if (patternsPreset === "gcc")
+        {
+            preset = [
+                {
+                    scanStdout: false,
+                    scanStderr: true,
+                    severity: 'warning',
+                    filePrefix: '${projectPath}',
+                    regexp: '^(.*):(\\d+):(\\d+):\\s+warning:\\s+(.*)$',
+                    message: 4,
+                    file: 1,
+                    line: 2,
+                    lastLine: null,
+                    column: 3,
+                    lastColumn: null
+                },
+                {
+                    scanStdout: false,
+                    scanStderr: true,
+                    severity: 'error',
+                    filePrefix: '${projectPath}',
+                    regexp: '^(.*):(\\d+):(\\d+):\\s+error:\\s+(.*)$',
+                    message: 4,
+                    file: 1,
+                    line: 2,
+                    lastLine: null,
+                    column: 3,
+                    lastColumn: null
+                },
+                {
+                    scanStdout: false,
+                    scanStderr: true,
+                    severity: 'error',
+                    filePrefix: '',
+                    regexp: '^(.*):(\\d+):\\s+(?!(warning:|error:|note:))(.*)$',
+                    message: 4,
+                    file: 1,
+                    line: 2,
+                    lastLine: null,
+                    column: null,
+                    lastColumn: null
+                }
+            ];
+        }
+
+        return patterns.concat(preset);
+    }
+
     private getFileDiagnosticsFromRegexExec(matches: RegExpExecArray, file: number, message: number,
         severity: DiagnosticSeverity, filePrefix: string,
         line: number | null, lastLine: number | null, column: number | null, lastColumn: number | null
@@ -201,8 +255,10 @@ export class ProblemMatcher {
         });
     }
 
-    scan(id: string, stdout: string, stderr: string, projectPath: string, patterns: ProblemMatchingPattern[]) {
+    scan(id: string, stdout: string, stderr: string, projectPath: string, patterns: ProblemMatchingPattern[], patternsPreset: string) {
         patterns = this.normalizePatterns(patterns);
+        patterns = this.addPatternsPreset(patterns, patternsPreset)
+
         let allPatternsDiagnostics: FileDiagnostic[] = [];
         for (const pattern of patterns)
         {

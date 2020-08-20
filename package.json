@@ -180,6 +180,12 @@
                   }
                 }
               }
+            },
+            "patternsPreset": {
+              "description": "Preset of patterns appended to patterns array. Not used if empty.",
+              "type": "string",
+              "enum": [ "", "gcc"],
+              "default": ""
             }
           }
         }

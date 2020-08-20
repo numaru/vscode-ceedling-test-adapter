@@ -651,7 +651,8 @@ export class CeedlingAdapter implements TestAdapter {
             if (this.getConfiguration().get<boolean>('problemMatching.enabled', false))
             {
                 this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
-                    this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []));
+                    this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []),
+                    this.getConfiguration().get<string>('problemMatching.patternsPreset', ""));
             }
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
