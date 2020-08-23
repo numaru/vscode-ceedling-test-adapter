@@ -103,17 +103,17 @@
           "scope": "resource"
         },
         "ceedlingExplorer.problemMatching": {
-          "markdownDescription": "Scans ceedling output text for known warning or error strings and reports these inline in the editor and in the Problems panel.&nbsp;Tries to resemble VSCode Tasks problemMatchers mechanism.",
+          "markdownDescription": "Configuration of mechanism that scans Ceedling output text for known error/warning/info strings and reports these inline in the editor and in the Problems panel.&nbsp;The mechanism tries to resemble the one used in VSCode Tasks problemMatchers.",
           "type": "object",
           "scope": "resource",
           "properties": {
             "enabled": {
-              "description": "Is problemMatching scan enabled or not.",
+              "description": "Whether problem matching enabled.",
               "type": "boolean",
               "default": false
             },
             "patterns": {
-              "description": "Problem matching patterns.",
+              "description": "Patterns used for problem matching.",
               "type": "array",
               "default": [],
               "items": {
@@ -147,7 +147,7 @@
                     "default": ""
                   },
                   "regexp": {
-                    "description": "The regular expression to find an error, warning or info in the output.",
+                    "description": "The regular expression that is used to find an error, warning or info in the output line.",
                     "type": "string"
                   },
                   "message": {
