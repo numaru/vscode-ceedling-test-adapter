@@ -19,8 +19,8 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 * Install the extension and restart VS Code
 * Open the workspace or folder containing your Ceedling project
 * Configure your `project.yml` path in the VS Code's settings if required [see below](#options)
-* Configure the shell path where ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
-* Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
+* Configure the shell path where Ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
+* Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
 * Open the Test view
 * Run your tests using the ![Run](img/run.png) icons in the Test Explorer or the CodeLenses in your test file
 
@@ -30,12 +30,12 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 
 Property                                | Description
 ----------------------------------------|---------------------------------------------------------------
-`ceedlingExplorer.projectPath`          | The path to the ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
-`ceedlingExplorer.shellPath`            | The path to the shell where ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
+`ceedlingExplorer.projectPath`          | The path to the Ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
+`ceedlingExplorer.shellPath`            | The path to the shell where Ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
 `ceedlingExplorer.debugConfiguration`   | The Debug configuration to run during debugging. See Debugging for more info.  
 `ceedlingExplorer.prettyTestLabel`      | The test label is prettier in the test explorer, that mean the label is shorter and without begin prefix. E.g. inactive `test_BlinkTaskShouldToggleLed`, active `BlinkTaskShouldToggleLed` <br> Inactive: <br> ![prettyTestLabelInactive](img/prettyTestLabelInactive.png) <br> Active: <br> ![prettyTestLabelActive](img/prettyTestLabelActive.png)
 `ceedlingExplorer.prettyTestFileLabel`  | The test file label is prettier in the test explorer, that mean the label is shorter, without begin prefix, path and file type. E.g. inactive `test/LEDs/test_BlinkTask.c`, active `BlinkTask` <br> Inactive: <br> ![prettyTestFileLabelInactive](img/prettyTestFileLabelInactive.png) <br> Active: <br> ![prettyTestFileLabelActive](img/prettyTestFileLabelActive.png)
-`ceedlingExplorer.testCommandArgs`      | The command line arguments used to run ceedling tests. The first argument have to litteraly contain the `${TEST_ID}` tag. The value `["test:${TEST_ID}"]` is used by default. For example, the arguments `"test:${TEST_ID}", "gcov:${TEST_ID}", "utils:gcov"` can be used to run tests and generate a gcov report.
+`ceedlingExplorer.testCommandArgs`      | The command line arguments used to run Ceedling tests. The first argument have to litteraly contain the `${TEST_ID}` tag. The value `["test:${TEST_ID}"]` is used by default. For example, the arguments `"test:${TEST_ID}", "gcov:${TEST_ID}", "utils:gcov"` can be used to run tests and generate a gcov report.
 
 ## Commands
 
@@ -83,7 +83,7 @@ Example configuration with Native Debug (`webfreak.debug`):
 
 ## Known issues
 
-* Cannot use both the junit ceedling plugin and the xml plugin required by this extension because they are using the same ouput filename by default. If the version of the ceedling you are using is greather than 0.28.3, you should be able to configure the output filename. [#20](https://github.com/numaru/vscode-ceedling-test-adapter/issues/20)
+* Cannot use both the junit Ceedling plugin and the xml plugin required by this extension because they are using the same ouput filename by default. If the version of the Ceedling you are using is greather than 0.28.3, you should be able to configure the output filename. [#20](https://github.com/numaru/vscode-ceedling-test-adapter/issues/20)
 
 ## Troubleshooting
 

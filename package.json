@@ -66,13 +66,13 @@
       "title": "Ceedling Test Explorer configuration",
       "properties": {
         "ceedlingExplorer.projectPath": {
-          "description": "Path to the ceedling project directory",
+          "description": "Path to the Ceedling project directory",
           "type": "string",
           "default": ".",
           "scope": "resource"
         },
         "ceedlingExplorer.shellPath": {
-          "description": "Path to the shell where ceedling is installed",
+          "description": "Path to the shell where Ceedling is installed",
           "type": "string",
           "default": "null",
           "scope": "resource"
@@ -95,7 +95,7 @@
           "scope": "resource"
         },
         "ceedlingExplorer.testCommandArgs": {
-          "markdownDescription": "The command line arguments used to run the ceedling tests",
+          "markdownDescription": "The command line arguments used to run the Ceedling tests",
           "type": "array",
           "default": [
             "test:${TEST_ID}"
