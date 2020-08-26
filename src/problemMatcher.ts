@@ -86,12 +86,11 @@ export class ProblemMatcher {
         return result;
     }
 
-    private addPatternsPreset(patterns: ProblemMatchingPattern[], patternsPreset: string): ProblemMatchingPattern[] {
-        let preset: ProblemMatchingPattern[] = [];
+    private getPatternsPreset(patternsPreset: string): ProblemMatchingPattern[] {
 
         if (patternsPreset === "gcc")
         {
-            preset = [
+            return [
                 {
                     scanStdout: false,
                     scanStderr: true,
@@ -134,7 +133,7 @@ export class ProblemMatcher {
             ];
         }
 
-        return patterns.concat(preset);
+        return [];
     }
 
     private getFileDiagnosticsFromRegexExec(matches: RegExpExecArray, file: number, message: number,
@@ -252,9 +251,8 @@ export class ProblemMatcher {
         });
     }
 
-    scan(id: string, stdout: string, stderr: string, projectPath: string, patterns: ProblemMatchingPattern[], patternsPreset: string) {
-        patterns = this.normalizePatterns(patterns);
-        patterns = this.addPatternsPreset(patterns, patternsPreset)
+    scan(id: string, stdout: string, stderr: string, projectPath: string, mode: string, patterns: ProblemMatchingPattern[]) {
+        patterns = (mode === "patterns") ? this.normalizePatterns(patterns) : this.getPatternsPreset(mode);
 
         let allPatternsDiagnostics: FileDiagnostic[] = [];
         for (const pattern of patterns)

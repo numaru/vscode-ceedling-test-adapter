@@ -49,16 +49,14 @@ Problem matching is the mechanism that scans Ceedling output text for known erro
 Problem matching configuration options:
 Property           | Description
 -------------------|---------------------------------------------------------------
-`enabled`          | Whether problem matching enabled. Default is false.
-`patterns`         | Array of pattern objects used for problem matching. Ceedling output is scanned line by line using each pattern provided in this array plus those provided by patternsPreset. Default is empty array - that is, no scanning is actually performed.
-`patternsPreset`   | Preset of patterns appended to patterns array. The only preset currently available is "gcc", which adds patterns for GCC compiler/linker warnings and errors. Default is empty string, which means no preset used.
+`mode`             | Mode of problem matching. It is either "disabled", uses preset (i.e. "gcc") or uses custom "patterns" from patterns array. Default is "disabled".
+`patterns`         | Array of custom pattern objects used for problem matching. If mode is set to "patterns", Ceedling output is scanned line by line using each pattern provided in this array. Default is empty array.
 <br>
 
 Example configuration which is sufficient in most cases:
 ```json
 "ceedlingExplorer.problemMatching": {
-	"enabled": true,
-	"patternsPreset": "gcc"
+	"mode": "gcc"
 }
 ```
 

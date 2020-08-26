@@ -648,12 +648,11 @@ export class CeedlingAdapter implements TestAdapter {
             const args = this.getTestCommandArgs(testSuite.label);
             const result = await this.execCeedling(args);
             const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
-            if (this.getConfiguration().get<boolean>('problemMatching.enabled', false))
-            {
-                this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
-                    this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []),
-                    this.getConfiguration().get<string>('problemMatching.patternsPreset', ""));
-            }
+
+            this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
+                this.getConfiguration().get<string>('problemMatching.mode', ""),
+                this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []));
+
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */

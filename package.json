@@ -107,13 +107,18 @@
           "type": "object",
           "scope": "resource",
           "properties": {
-            "enabled": {
-              "description": "Whether problem matching enabled.",
-              "type": "boolean",
-              "default": false
+            "mode": {
+              "description": "Mode of problem matching. It is either disabled, uses preset (i.e. gcc) or uses custom patterns from patterns array.",
+              "type": "string",
+              "enum": [
+                "disabled",
+                "patterns",
+                "gcc"
+              ],
+              "default": "disabled"
             },
             "patterns": {
-              "description": "Patterns used for problem matching.",
+              "description": "Array of custom pattern objects used for problem matching.",
               "type": "array",
               "default": [],
               "items": {
@@ -180,12 +185,6 @@
                   }
                 }
               }
-            },
-            "patternsPreset": {
-              "description": "Preset of patterns appended to patterns array. Not used if empty.",
-              "type": "string",
-              "enum": [ "", "gcc"],
-              "default": ""
             }
           }
         }
