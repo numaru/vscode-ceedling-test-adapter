@@ -112,7 +112,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.2...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.6.0...develop
+[1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.1...v1.6.0
 [1.5.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.4.2...v1.5.0
