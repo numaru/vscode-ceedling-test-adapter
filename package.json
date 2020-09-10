@@ -124,7 +124,11 @@
               "items": {
                 "type": "object",
                 "title": "Problem matching pattern.",
-                "required": [ "regexp", "message", "file" ],
+                "required": [
+                  "regexp",
+                  "message",
+                  "file"
+                ],
                 "properties": {
                   "scanStdout": {
                     "description": "Scan stdout output for problems.",
@@ -165,22 +169,34 @@
                   },
                   "line": {
                     "description": "Index of the problem's (first) line in the regular expression. Not used if null or not defined.",
-                    "type": [ "integer", "null" ],
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
                     "default": null
                   },
                   "lastLine": {
                     "description": "Index of the problem's last line in the regular expression. Not used if null or not defined.",
-                    "type": [ "integer", "null" ],
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
                     "default": null
                   },
                   "column": {
                     "description": "Index of the problem's (first) column in the regular expression. Not used if null or not defined.",
-                    "type": [ "integer", "null" ],
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
                     "default": null
                   },
                   "lastColumn": {
                     "description": "Index of the problem's last column in the regular expression. Not used if null or not defined.",
-                    "type": [ "integer", "null" ],
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
                     "default": null
                   }
                 }
