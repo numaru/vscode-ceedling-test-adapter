@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.6.0] - 2020-10-09
+
+### Added
+
+* Add the errors reported by the ceedling build tools to the `PROBLEMS` tab. It should be enabled using the `ceedlingExplorer.problemMatching` option.
+
 ## [1.5.2] - 2020-07-06
 
 ### Fixed
