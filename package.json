@@ -66,13 +66,13 @@
       "title": "Ceedling Test Explorer configuration",
       "properties": {
         "ceedlingExplorer.projectPath": {
-          "description": "Path to the ceedling project directory",
+          "description": "Path to the Ceedling project directory",
           "type": "string",
           "default": ".",
           "scope": "resource"
         },
         "ceedlingExplorer.shellPath": {
-          "description": "Path to the shell where ceedling is installed",
+          "description": "Path to the shell where Ceedling is installed",
           "type": "string",
           "default": "null",
           "scope": "resource"
@@ -95,12 +95,98 @@
           "scope": "resource"
         },
         "ceedlingExplorer.testCommandArgs": {
-          "markdownDescription": "The command line arguments used to run the ceedling tests",
+          "markdownDescription": "The command line arguments used to run the Ceedling tests",
           "type": "array",
           "default": [
             "test:${TEST_ID}"
           ],
           "scope": "resource"
+        },
+        "ceedlingExplorer.problemMatching": {
+          "markdownDescription": "Configuration of mechanism that scans Ceedling output text for known error/warning/info strings and reports these inline in the editor and in the Problems panel.&nbsp;The mechanism tries to resemble the one used in VSCode Tasks problemMatchers.",
+          "type": "object",
+          "scope": "resource",
+          "properties": {
+            "mode": {
+              "description": "Mode of problem matching. It is either disabled, uses preset (i.e. gcc) or uses custom patterns from patterns array.",
+              "type": "string",
+              "enum": [
+                "disabled",
+                "patterns",
+                "gcc"
+              ],
+              "default": "disabled"
+            },
+            "patterns": {
+              "description": "Array of custom pattern objects used for problem matching.",
+              "type": "array",
+              "default": [],
+              "items": {
+                "type": "object",
+                "title": "Problem matching pattern.",
+                "required": [ "regexp", "message", "file" ],
+                "properties": {
+                  "scanStdout": {
+                    "description": "Scan stdout output for problems.",
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "scanStderr": {
+                    "description": "Scan stderr output for problems.",
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "severity": {
+                    "description": "Severity of messages found by this pattern.",
+                    "type": "string",
+                    "enum": [
+                      "error",
+                      "warning",
+                      "info"
+                    ],
+                    "default": "info"
+                  },
+                  "filePrefix": {
+                    "markdownDescription": "Used to determine file's absolute path if file location is relative.&nbsp;${projectPath} replaced with project path. Not used if empty or not defined.",
+                    "type": "string",
+                    "default": ""
+                  },
+                  "regexp": {
+                    "description": "The regular expression that is used to find an error, warning or info in the output line.",
+                    "type": "string"
+                  },
+                  "message": {
+                    "description": "Index of the problem's message in the regular expression.",
+                    "type": "integer"
+                  },
+                  "file": {
+                    "description": "Index of the problem's filename in the regular expression.",
+                    "type": "integer"
+                  },
+                  "line": {
+                    "description": "Index of the problem's (first) line in the regular expression. Not used if null or not defined.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "lastLine": {
+                    "description": "Index of the problem's last line in the regular expression. Not used if null or not defined.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "column": {
+                    "description": "Index of the problem's (first) column in the regular expression. Not used if null or not defined.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  },
+                  "lastColumn": {
+                    "description": "Index of the problem's last column in the regular expression. Not used if null or not defined.",
+                    "type": [ "integer", "null" ],
+                    "default": null
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }

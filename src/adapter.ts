@@ -17,6 +17,7 @@ import {
     TestSuiteInfo,
     TestInfo
 } from 'vscode-test-adapter-api';
+import { ProblemMatcher, ProblemMatchingPattern } from './problemMatcher';
 
 export class CeedlingAdapter implements TestAdapter {
     private disposables: { dispose(): void }[] = [];
@@ -24,6 +25,8 @@ export class CeedlingAdapter implements TestAdapter {
     private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
     private readonly testStatesEmitter = new vscode.EventEmitter<TestRunStartedEvent | TestRunFinishedEvent | TestSuiteEvent | TestEvent>();
     private readonly autorunEmitter = new vscode.EventEmitter<void>();
+
+    private readonly problemMatcher = new ProblemMatcher();
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
     private functionRegex: RegExp | undefined;
@@ -62,8 +65,15 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
+        this.disposables.push(this.problemMatcher);
         // callback receive when a config property is modified
         vscode.workspace.onDidChangeConfiguration(event => {
+            if (event.affectsConfiguration("ceedlingExplorer.problemMatching")) {
+                if (!this.getConfiguration().get<boolean>('problemMatching.enabled', false)) {
+                    this.problemMatcher.clear();
+                }
+            }
+
             let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
             let affectedPrettyTestFileLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
             if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
@@ -452,6 +462,9 @@ export class CeedlingAdapter implements TestAdapter {
             label: 'Ceedling',
             children: []
         } as TestSuiteInfo;
+
+        this.problemMatcher.setActualIds(files);
+
         /* get labels configuration */
         this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
         this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
@@ -634,10 +647,15 @@ export class CeedlingAdapter implements TestAdapter {
             /* Run the test and get stdout */
             const args = this.getTestCommandArgs(testSuite.label);
             const result = await this.execCeedling(args);
+            const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
+
+            this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
+                this.getConfiguration().get<string>('problemMatching.mode', ""),
+                this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []));
+
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */
-                const message: string = `${result.stdout}\n${result.stderr}`;
                 for (const child of testSuite.children) {
                     this.testStatesEmitter.fire({ type: 'test', test: child, state: 'errored', message: message } as TestEvent);
                 }
@@ -648,7 +666,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: ignoredTest["Name"],
                         state: 'skipped',
-                        message: result.stdout
+                        message: message
                     } as TestEvent);
                 }
                 for (const succefullTest of this.getTestListDataFromXmlReport(xmlReportData, "SuccessfulTests")) {
@@ -656,7 +674,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: succefullTest["Name"],
                         state: 'passed',
-                        message: result.stdout
+                        message: message
                     } as TestEvent);
                 }
                 for (const failedTest of this.getTestListDataFromXmlReport(xmlReportData, "FailedTests")) {
@@ -664,7 +682,7 @@ export class CeedlingAdapter implements TestAdapter {
                         type: 'test',
                         test: failedTest["Name"],
                         state: 'failed',
-                        message: result.stdout,
+                        message: message,
                         decorations: [{
                             line: parseInt(failedTest["Location"]["Line"]) - 1,
                             message: failedTest["Message"].toString()
