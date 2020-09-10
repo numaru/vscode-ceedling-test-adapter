@@ -1,15 +1,13 @@
 import {
-	Diagnostic,
-	DiagnosticCollection,
-	DiagnosticSeverity,
-	Position,
-	Range,
-	Uri,
+    Diagnostic,
+    DiagnosticCollection,
+    DiagnosticSeverity,
+    Position,
+    Range,
+    Uri,
     languages
 } from 'vscode';
 import * as path from 'path';
-
-
 
 export interface ProblemMatchingPattern {
     scanStdout: boolean;
@@ -30,8 +28,6 @@ interface FileDiagnostic {
     diagnostic: Diagnostic;
 }
 
-
-
 export class ProblemMatcher {
     private suitsDiagnostics: Map<string, Array<FileDiagnostic>>;
     private readonly diagnosticCollection: DiagnosticCollection;
@@ -47,36 +43,35 @@ export class ProblemMatcher {
         //requested type not matters. That's why I need to normalize it's output.
         let result: ProblemMatchingPattern[] = [];
 
-        for (const pattern of patterns)
-        {
+        for (const pattern of patterns) {
             if ((pattern.regexp !== undefined) && (typeof pattern.regexp === 'string') &&
-            (pattern.message !== undefined) && (typeof pattern.message === 'number') &&
-            (pattern.file !== undefined) && (typeof pattern.file === 'number')) {
+                (pattern.message !== undefined) && (typeof pattern.message === 'number') &&
+                (pattern.file !== undefined) && (typeof pattern.file === 'number')) {
                 let resultPattern: ProblemMatchingPattern = {
                     scanStdout: (pattern.scanStdout === true) ? true : false,
                     scanStderr: (pattern.scanStderr === false) ? false : true,
                     severity: ((pattern.severity === 'error') ||
-                                (pattern.severity === 'warning') ||
-                                (pattern.severity === 'info'))
-                                ? pattern.severity : 'info',
+                        (pattern.severity === 'warning') ||
+                        (pattern.severity === 'info'))
+                        ? pattern.severity : 'info',
                     filePrefix: ((pattern.filePrefix !== undefined) &&
-                                            (typeof pattern.filePrefix === 'string'))
-                                            ? pattern.filePrefix : '',
+                        (typeof pattern.filePrefix === 'string'))
+                        ? pattern.filePrefix : '',
                     regexp: pattern.regexp,
                     message: pattern.message,
                     file: pattern.file,
                     line: ((pattern.line !== undefined) &&
-                            (typeof pattern.line === 'number'))
-                            ? pattern.line : null,
+                        (typeof pattern.line === 'number'))
+                        ? pattern.line : null,
                     lastLine: ((pattern.lastLine !== undefined) &&
-                            (typeof pattern.lastLine === 'number'))
-                            ? pattern.lastLine : null,
+                        (typeof pattern.lastLine === 'number'))
+                        ? pattern.lastLine : null,
                     column: ((pattern.column !== undefined) &&
-                            (typeof pattern.column === 'number'))
-                            ? pattern.column : null,
+                        (typeof pattern.column === 'number'))
+                        ? pattern.column : null,
                     lastColumn: ((pattern.lastColumn !== undefined) &&
-                            (typeof pattern.lastColumn === 'number'))
-                            ? pattern.lastColumn : null
+                        (typeof pattern.lastColumn === 'number'))
+                        ? pattern.lastColumn : null
                 };
 
                 result.push(resultPattern);
@@ -87,9 +82,7 @@ export class ProblemMatcher {
     }
 
     private getPatternsPreset(patternsPreset: string): ProblemMatchingPattern[] {
-
-        if (patternsPreset === "gcc")
-        {
+        if (patternsPreset === "gcc") {
             return [
                 {
                     scanStdout: false,
@@ -132,15 +125,13 @@ export class ProblemMatcher {
                 }
             ];
         }
-
         return [];
     }
 
     private getFileDiagnosticsFromRegexExec(matches: RegExpExecArray, file: number, message: number,
         severity: DiagnosticSeverity, filePrefix: string,
         line: number | null, lastLine: number | null, column: number | null, lastColumn: number | null
-        ): FileDiagnostic | null {
-        
+    ): FileDiagnostic | null {
         if ((matches.length < 3) ||
             (file >= matches.length) ||
             (message >= matches.length) ||
@@ -157,7 +148,7 @@ export class ProblemMatcher {
         const lastLineValue = (lastLine !== null) ? Number(matches[lastLine]) : undefined;
         const columnValue = (column !== null) ? Number(matches[column]) : undefined;
         const lastColumnValue = (lastColumn !== null) ? Number(matches[lastColumn]) : undefined;
-        
+
         if ((fileValue === undefined) ||
             (messageValue === undefined) ||
             ((lineValue !== undefined) && Number.isNaN(lineValue)) ||
@@ -169,12 +160,12 @@ export class ProblemMatcher {
 
         const range = new Range(
             new Position((lineValue !== undefined) ? lineValue - 1 : 0,
-                        (columnValue !== undefined) ? columnValue - 1 : 0),
+                (columnValue !== undefined) ? columnValue - 1 : 0),
             new Position((lastLineValue !== undefined) ? lastLineValue - 1 :
-                        ((lineValue !== undefined) ? lineValue - 1 : 0),
-                        (lastColumnValue !== undefined) ? lastColumnValue - 1 : 999)
+                ((lineValue !== undefined) ? lineValue - 1 : 0),
+                (lastColumnValue !== undefined) ? lastColumnValue - 1 : 999)
         );
-        
+
         let resultDiagnostic = new Diagnostic(range, messageValue, severity);
         resultDiagnostic.source = 'Ceedling';
 
@@ -187,27 +178,25 @@ export class ProblemMatcher {
     private getPatternDiagnostics(stdout: string, stderr: string, projectPath: string, pattern: ProblemMatchingPattern): FileDiagnostic[] {
         let result: FileDiagnostic[] = [];
 
-		try {
+        try {
             const input = ((pattern.scanStdout ? stdout : '') + '\n' + (pattern.scanStderr ? stderr : '')).split(/\r?\n/);
             const regexp = new RegExp(pattern.regexp);
             const severity = pattern.severity === 'error' ? DiagnosticSeverity.Error :
-                            (pattern.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Information);
+                (pattern.severity === 'warning' ? DiagnosticSeverity.Warning : DiagnosticSeverity.Information);
             const filePrefix = pattern.filePrefix.replace(/\$\{projectPath\}/g, projectPath);
             for (const line of input) {
                 const matches = regexp.exec(line);
-                if (matches)
-                {
+                if (matches) {
                     const fileDiagnostic = this.getFileDiagnosticsFromRegexExec(matches, pattern.file, pattern.message, severity,
-                                            filePrefix, pattern.line, pattern.lastLine, pattern.column, pattern.lastColumn);
-                    if (fileDiagnostic !== null)
-                    {
+                        filePrefix, pattern.line, pattern.lastLine, pattern.column, pattern.lastColumn);
+                    if (fileDiagnostic !== null) {
                         result.push(fileDiagnostic);
                     }
                 }
             }
-		} catch {
+        } catch {
             //ignore
-		}
+        }
 
         return result;
     }
@@ -219,28 +208,24 @@ export class ProblemMatcher {
             (a.range.start.character !== b.range.start.character) ||
             (a.range.end.line !== b.range.end.line) ||
             (a.range.end.character !== b.range.end.character) ||
-            (a.source !== b.source))
-        {
+            (a.source !== b.source)) {
             return false;
         }
 
         return true;
     }
-    
+
     private updateDiagnosticsCollection() {
         let fileDiagnosticsSets: Map<string, Array<Diagnostic>> = new Map<string, Array<Diagnostic>>();
         this.suitsDiagnostics.forEach((value: Array<FileDiagnostic>, key: string) => {
-            for (const fileDiagnostic of value)
-            {
-                if (!fileDiagnosticsSets.has(fileDiagnostic.file))
-                {
+            for (const fileDiagnostic of value) {
+                if (!fileDiagnosticsSets.has(fileDiagnostic.file)) {
                     fileDiagnosticsSets.set(fileDiagnostic.file, new Array<Diagnostic>());
                 }
                 const diagnostics = fileDiagnosticsSets.get(fileDiagnostic.file)!;
                 if (!diagnostics.some((value) => {
                     return this.compareDiagnostics(value, fileDiagnostic.diagnostic);
-                }))
-                {
+                })) {
                     diagnostics.push(fileDiagnostic.diagnostic);
                 }
             }
@@ -253,10 +238,8 @@ export class ProblemMatcher {
 
     scan(id: string, stdout: string, stderr: string, projectPath: string, mode: string, patterns: ProblemMatchingPattern[]) {
         patterns = (mode === "patterns") ? this.normalizePatterns(patterns) : this.getPatternsPreset(mode);
-
         let allPatternsDiagnostics: FileDiagnostic[] = [];
-        for (const pattern of patterns)
-        {
+        for (const pattern of patterns) {
             const patternDiagnostics = this.getPatternDiagnostics(stdout, stderr, projectPath, pattern);
             allPatternsDiagnostics = allPatternsDiagnostics.concat(patternDiagnostics);
         }
@@ -264,8 +247,7 @@ export class ProblemMatcher {
         this.updateDiagnosticsCollection();
     }
 
-    setActualIds(actualIds: string[])
-    {
+    setActualIds(actualIds: string[]) {
         const currentIds = this.suitsDiagnostics.keys();
         for (const id of currentIds) {
             if (!actualIds.includes(id)) {
@@ -275,14 +257,13 @@ export class ProblemMatcher {
         this.updateDiagnosticsCollection();
     }
 
-    clear()
-    {
+    clear() {
         this.suitsDiagnostics.clear();
         this.diagnosticCollection.clear();
     }
 
     dispose(): void {
-		this.clear();
-		this.diagnosticCollection.dispose();
+        this.clear();
+        this.diagnosticCollection.dispose();
     }
 }
