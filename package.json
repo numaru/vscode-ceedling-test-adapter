@@ -205,6 +205,16 @@
           }
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "ceedlingExplorer.clean",
+        "title": "Ceedling: Clean"
+      },
+      {
+        "command": "ceedlingExplorer.clobber",
+        "title": "Ceedling: Clobber"
+      }
+    ]
   }
 }
