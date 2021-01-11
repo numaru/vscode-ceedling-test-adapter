@@ -32,6 +32,7 @@ export class CeedlingAdapter implements TestAdapter {
     private functionRegex: RegExp | undefined;
     private fileLabelRegex: RegExp | undefined;
     private testLabelRegex: RegExp | undefined;
+    private debugTestExecutable: string = '';
     private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
@@ -165,9 +166,9 @@ export class CeedlingAdapter implements TestAdapter {
 
             // Set current test executable
             if (this.detectTestSpecificDefines(ymlProjectData, testFileName))
-                g_debugTestExecutable = `${testFileName}/${testFileName}${ext}`
+                this.debugTestExecutable = `${testFileName}/${testFileName}${ext}`
             else
-                g_debugTestExecutable = `${testFileName}${ext}`;
+                this.debugTestExecutable = `${testFileName}${ext}`;
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
@@ -175,7 +176,49 @@ export class CeedlingAdapter implements TestAdapter {
         }
         finally {
             // Reset current test executable
-            g_debugTestExecutable = "";
+            this.debugTestExecutable = "";
+        }
+    }
+
+    getDebugTestExecutable(): string {
+        return this.debugTestExecutable;
+    }
+
+    async clean(): Promise<void> {
+        const result = await vscode.window.withProgress(
+            {
+                title: "Ceedling Clean",
+                cancellable: true,
+                location: vscode.ProgressLocation.Notification,
+            }, async (progress, token) => {
+                token.onCancellationRequested(() => {
+                    this.cancel();
+                });
+
+                return this.execCeedling(["clean"]);
+            }
+        );
+        if (result.error) {
+            vscode.window.showErrorMessage("Ceedling clean failed");
+        }
+    }
+
+    async clobber(): Promise<void> {
+        const result = await vscode.window.withProgress(
+            {
+                title: "Ceedling Clobber",
+                cancellable: true,
+                location: vscode.ProgressLocation.Notification,
+            }, async (progress, token) => {
+                token.onCancellationRequested(() => {
+                    this.cancel();
+                });
+
+                return this.execCeedling(["clobber"]);
+            }
+        );
+        if (result.error) {
+            vscode.window.showErrorMessage("Ceedling clobber failed");
         }
     }
 
@@ -697,8 +740,3 @@ export class CeedlingAdapter implements TestAdapter {
     }
 }
 
-let g_debugTestExecutable: string = "";
-
-export function getDebugTestExecutable(): string {
-    return g_debugTestExecutable;
-}
