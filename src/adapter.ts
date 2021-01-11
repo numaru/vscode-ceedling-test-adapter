@@ -179,6 +179,44 @@ export class CeedlingAdapter implements TestAdapter {
         }
     }
 
+    async clean(): Promise<void> {
+        const result = await vscode.window.withProgress(
+            {
+                title: "Ceedling Clean",
+                cancellable: true,
+                location: vscode.ProgressLocation.Notification,
+            }, async (progress, token) => {
+                token.onCancellationRequested(() => {
+                    this.cancel();
+                });
+
+                return this.execCeedling(["clean"]);
+            }
+        );
+        if (result.error) {
+            vscode.window.showErrorMessage("Ceedling clean failed");
+        }
+    }
+
+    async clobber(): Promise<void> {
+        const result = await vscode.window.withProgress(
+            {
+                title: "Ceedling Clobber",
+                cancellable: true,
+                location: vscode.ProgressLocation.Notification,
+            }, async (progress, token) => {
+                token.onCancellationRequested(() => {
+                    this.cancel();
+                });
+
+                return this.execCeedling(["clobber"]);
+            }
+        );
+        if (result.error) {
+            vscode.window.showErrorMessage("Ceedling clobber failed");
+        }
+    }
+
     cancel(): void {
         this.isCanceled = true;
         if (this.ceedlingProcess !== undefined) {
