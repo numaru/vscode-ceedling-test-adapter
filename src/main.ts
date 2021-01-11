@@ -1,35 +1,34 @@
 import * as vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { TestAdapterRegistrar } from 'vscode-test-adapter-util';
-import { CeedlingAdapter, getDebugTestExecutable } from './adapter';
+import { CeedlingAdapter } from './adapter';
 
 let currentAdapter: CeedlingAdapter | null = null
 
-function getCurrentDebugConfiguration(): string {
-    const currentExec = getDebugTestExecutable();
+function debugTestExecutable(): string | null {
+    if (currentAdapter == null) return null;
+    const currentExec = currentAdapter.getDebugTestExecutable();
     if (!currentExec) {
         vscode.window.showErrorMessage("Not currently debugging a Ceedling Test");
-        return "";
+        return null;
     }
     return currentExec;
 }
 
 function ceedlingClean(): void {
-    if (currentAdapter != null) {
-        currentAdapter.clean();
-    }
+    if (currentAdapter == null) return;
+    currentAdapter.clean();
 }
 
 function ceedlingClobber(): void {
-    if (currentAdapter != null) {
-        currentAdapter.clobber();
-    }
+    if (currentAdapter == null) return;
+    currentAdapter.clobber();
 }
 
 export async function activate(context: vscode.ExtensionContext) {
     const testExplorerExtension = vscode.extensions.getExtension<TestHub>(testExplorerExtensionId);
     if (testExplorerExtension) {
-        context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.debugTestExecutable", getCurrentDebugConfiguration));
+        context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.debugTestExecutable", debugTestExecutable));
         context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.clean", ceedlingClean));
         context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.clobber", ceedlingClobber));
         context.subscriptions.push(new TestAdapterRegistrar(
