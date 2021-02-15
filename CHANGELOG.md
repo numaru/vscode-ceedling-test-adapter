@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.0] - 2021-02-15
+
+### Added
+
+* Add support for `TEST_CASE` and `TEST_RANGE` parameterized tests.
+
+### Fixed
+
+* Do not run ceedling from an unexisting directory.
+
 ## [1.7.0] - 2021-01-11
 
 ### Added
@@ -118,7 +128,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.6.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.0...develop
+[1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.7.0...v1.8.0
+[1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.1...v1.6.0
 [1.5.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.0...v1.5.1
