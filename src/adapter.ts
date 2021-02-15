@@ -398,7 +398,7 @@ export class CeedlingAdapter implements TestAdapter {
             } catch (e) { }
         }
         this.functionRegex = new RegExp(
-            `^((?:\\s*TEST_CASE\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
+            `^((?:\\s*(?:TEST_CASE|TEST_RANGE)\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
             'gm'
         );
     }
@@ -502,10 +502,20 @@ export class CeedlingAdapter implements TestAdapter {
 
     // Return a list of parameter from a given test token string. An empty array if there is no parameter for this test.
     private parseParametrizedTestCases(testCases: string): Array<any> {
-        // TODO: Handle also the TEST_RANGE() there
-        const regex = /\s*TEST_CASE\s*\((.*)\)\s*$/gm;
+        const regex = /\s*(TEST_CASE|TEST_RANGE)\s*\((.*)\)\s*$/gm;
         return [...testCases.matchAll(regex)]
-            .map((x: any, i: number) => { return { args: x[1], line: i } });
+            .flatMap((x: any, i: number) => {
+                if (x[1] === 'TEST_CASE') {
+                    return [{ args: x[2], line: i }]
+                } else {
+                    const foo = [...x[2].matchAll(/\[\s*(-?\d+.?\d*),\s*(-?\d+.?\d*),\s*(-?\d+.?\d*)\s*\]/gm)]
+                        .map((y) => [parseFloat(y[1]), parseFloat(y[2]), parseFloat(y[3])])
+                        .map(([start, end, inc]) => Array.from({ length: (end - start) / inc + 1 }, (_, j) => start + j * inc))
+                        .reduce((acc, y) => acc.flatMap(u => y.map(v => [u, v].flat())), [])
+                        .map((y) => { return { args: y.join(', '), line: i } })
+                    return foo;
+                }
+            });
     }
 
     private parseMultilineFunctionName(functionName: string): string {
