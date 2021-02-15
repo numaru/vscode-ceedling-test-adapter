@@ -119,6 +119,9 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async run(testIds: string[]): Promise<void> {
+        // Ceedling always run the whole file and so run the top test suite
+        testIds = testIds.map((x) => x.replace(/::.*/, ''));
+
         const testSuites = this.getTestSuitesFromTestIds(testIds);
         this.testStatesEmitter.fire({
             type: 'started',
@@ -144,6 +147,9 @@ export class CeedlingAdapter implements TestAdapter {
                 vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
                 return;
             }
+
+            // Ceedling always run the whole file and so run the top test suite
+            tests = tests.map((x) => x.replace(/::.*/, ''));
 
             // Determine test suite to run
             const testSuites = this.getTestSuitesFromTestIds(tests);
@@ -470,7 +476,7 @@ export class CeedlingAdapter implements TestAdapter {
         return this.testLabelRegex as RegExp;
     }
 
-    private setTestLabel(testName: string): string | undefined {
+    private setTestLabel(testName: string): string {
         let testLabel = testName;
         if (this.isPrettyTestLabelEnable) {
             const labelFunctionRegex = this.getTestLabelRegex();
@@ -492,6 +498,14 @@ export class CeedlingAdapter implements TestAdapter {
             }
         }
         return fileLabel;
+    }
+
+    // Return a list of parameter from a given test token string. An empty array if there is no parameter for this test.
+    private parseParametrizedTestCases(testCases: string): Array<any> {
+        // TODO: Handle also the TEST_RANGE() there
+        const regex = /\s*TEST_CASE\s*\((.*)\)\s*$/gm;
+        return [...testCases.matchAll(regex)]
+            .map((x: any, i: number) => { return { args: x[1], line: i } });
     }
 
     private parseMultilineFunctionName(functionName: string): string {
@@ -526,18 +540,40 @@ export class CeedlingAdapter implements TestAdapter {
             const fileText = fs.readFileSync(fullPath, 'utf8');
             let match = testRegex.exec(fileText);
             while (match != null) {
-                let testName = match[2];
-                testName = this.parseMultilineFunctionName(testName);
+                const testCases = this.parseParametrizedTestCases(match[1]);
+                const testName = this.parseMultilineFunctionName(match[2]);
                 const testLabel = this.setTestLabel(testName);
                 let line = fileText.substr(0, match.index).split('\n').length - 1;
                 line = line + match[0].substr(0, match[0].search(/\S/g)).split('\n').length - 1;
-                currentTestSuitInfo.children.push({
-                    type: 'test',
-                    id: file + '::' + testName,
-                    label: testLabel,
-                    file: fullPath,
-                    line: line
-                } as TestInfo)
+                if (testCases.length > 0) {
+                    const testSuiteInfo: TestSuiteInfo = {
+                        type: 'suite',
+                        id: `${file}::${testName}`,
+                        label: testLabel,
+                        file: fullPath,
+                        children: []
+                    };
+                    for (const testCase of testCases) {
+                        const testInfo: TestInfo = {
+                            type: 'test',
+                            id: `${file}::${testName}(${testCase.args})`,
+                            label: testCase.args,
+                            file: fullPath,
+                            line: line + testCase.line
+                        };
+                        testSuiteInfo.children.push(testInfo);
+                    }
+                    currentTestSuitInfo.children.push(testSuiteInfo)
+                } else {
+                    const testInfo: TestInfo = {
+                        type: 'test',
+                        id: `${file}::${testName}`,
+                        label: testLabel,
+                        file: fullPath,
+                        line: line
+                    };
+                    currentTestSuitInfo.children.push(testInfo);
+                }
                 match = testRegex.exec(fileText);
             }
             this.testSuiteInfo.children.push(currentTestSuitInfo);
@@ -678,17 +714,35 @@ export class CeedlingAdapter implements TestAdapter {
         }
     }
 
+    // Utility function to do dfs of a given test suite
+    // Returns the list of node in traversal order
+    private testInfoDfs(root: TestSuiteInfo | TestInfo): Array<TestSuiteInfo | TestInfo> {
+        const ret = [];
+        const stack = Array<TestSuiteInfo | TestInfo>();
+        stack.push(root);
+        while (stack.length > 0) {
+            const node = stack.pop()!;
+            ret.push(node);
+            if (node.type === 'suite') {
+                for (const child of node.children) {
+                    stack.push(child);
+                }
+            }
+        }
+        return ret;
+    }
+
     private async runTestSuite(testSuite: TestSuiteInfo): Promise<void> {
         this.testStatesEmitter.fire({ type: 'suite', suite: testSuite, state: 'running' } as TestSuiteEvent);
         const release = await this.ceedlingMutex.acquire();
         try {
-            for (const child of testSuite.children) {
-                this.testStatesEmitter.fire({ type: 'test', test: child, state: 'running' } as TestEvent);
+            for (const child of this.testInfoDfs(testSuite)) {
+                this.testStatesEmitter.fire({ type: child.type, test: child, state: 'running' } as TestEvent);
             }
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const args = this.getTestCommandArgs(testSuite.label);
+            const args = this.getTestCommandArgs(testSuite.id.replace(/::.*/, ''));
             const result = await this.execCeedling(args);
             const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
 
@@ -699,8 +753,8 @@ export class CeedlingAdapter implements TestAdapter {
             const xmlReportData = await this.getXmlReportData();
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */
-                for (const child of testSuite.children) {
-                    this.testStatesEmitter.fire({ type: 'test', test: child, state: 'errored', message: message } as TestEvent);
+                for (const child of this.testInfoDfs(testSuite)) {
+                    this.testStatesEmitter.fire({ type: child.type, test: child, state: 'errored', message: message } as TestEvent);
                 }
             } else {
                 /* Send the events from the xml report data */
