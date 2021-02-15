@@ -289,7 +289,12 @@ export class CeedlingAdapter implements TestAdapter {
         if (process.platform == 'win32') {
             workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
         }
-        return path.resolve(workspacePath, projectPath !== "null" ? projectPath : defaultProjectPath);
+        const absolutePath = path.resolve(workspacePath, projectPath);
+        if (!(fs.existsSync(absolutePath) && !fs.lstatSync(absolutePath).isDirectory())) {
+            // TODO: We are silently using the default project path. The user should be warned
+            return path.resolve(workspacePath, defaultProjectPath);
+        }
+        return absolutePath;
     }
 
     private async getFileList(fileType: string): Promise<string[]> {
