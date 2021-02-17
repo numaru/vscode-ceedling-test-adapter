@@ -290,7 +290,7 @@ export class CeedlingAdapter implements TestAdapter {
             workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
         }
         const absolutePath = path.resolve(workspacePath, projectPath);
-        if (!(fs.existsSync(absolutePath) && !fs.lstatSync(absolutePath).isDirectory())) {
+        if (!(fs.existsSync(absolutePath) && fs.lstatSync(absolutePath).isDirectory())) {
             // TODO: We are silently using the default project path. The user should be warned
             return path.resolve(workspacePath, defaultProjectPath);
         }
