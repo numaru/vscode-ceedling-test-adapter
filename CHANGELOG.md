@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.8.1] - 2021-02-17
+
+### Fixed
+
+* Fix the "always use default projectPath" issue.
+
 ## [1.8.0] - 2021-02-15
 
 ### Added
@@ -128,7 +134,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.1...develop
+[1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.0...v1.8.1
 [1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.7.0...v1.8.0
 [1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.5.1...v1.6.0
