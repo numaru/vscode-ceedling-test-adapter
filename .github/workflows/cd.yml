@@ -1,0 +1,73 @@
+name: Continuous Delivery
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install Node.js
+      uses: actions/setup-node@v1
+      with:
+        node-version: 10.x
+
+    - name: Install the package
+      run: npm install
+
+    - name: Run the tests
+      run: xvfb-run -a npm test
+
+    - name: Package the extension
+      if: success()
+      run: npm run package
+
+    - name: Get the version from the tag
+      id: tag_name
+      run: echo ::set-output name=current_version::${GITHUB_REF#refs/tags/v}
+      shell: bash
+
+    - name: Get the changelog entry
+      id: changelog_reader
+      if: success()
+      uses: mindsers/changelog-reader-action@v2
+      with:
+        validation_depth: 1
+        version: ${{ steps.tag_name.outputs.current_version }}
+        path: ./CHANGELOG.md
+
+    - name: Create a release
+      id: create_release
+      if: success()
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.changelog_reader.outputs.version }}
+        release_name: Release ${{ steps.changelog_reader.outputs.version }}
+        body: ${{ steps.changelog_reader.outputs.changes }}
+        prerelease: ${{ steps.changelog_reader.outputs.status == 'prereleased' }}
+        draft: ${{ steps.changelog_reader.outputs.status == 'unreleased' }}
+
+    - name: Upload the release asset
+      id: upload_release_asset 
+      if: success()
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./vscode-ceedling-test-adapter-${{ steps.tag_name.outputs.current_version }}.vsix
+        asset_name: vscode-ceedling-test-adapter-${{ steps.tag_name.outputs.current_version }}.vsix
+        asset_content_type: application/octet-stream
+
+    - name: Publish to the marketplace
+      if: success()
+      run: npm run publish
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
