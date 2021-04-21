@@ -687,10 +687,16 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getXmlReportPath(): string {
-        return path.resolve(
-            this.getProjectPath(),
-            this.buildDirectory, 'artifacts', 'test', this.reportFilename
-        );
+        // Return the latest updated file between artifacts/test/report.xml and artifacts/gcov/report.xml
+        // The report is generated in one of these directories based on the command used: ceedling test:* or gcov:*
+        const paths: Array<[string, Date]> = ['test', 'gcov']
+            .map((x) => path.resolve(
+                this.getProjectPath(),
+                this.buildDirectory, 'artifacts', x, this.reportFilename
+            ))
+            .map((x) => [x, fs.existsSync(x) ? fs.statSync(x).mtime : new Date(0)]);
+        paths.sort((lhs, rhs) => (rhs[1].getTime() - lhs[1].getTime()));
+        return paths[0][0];
     }
 
     private deleteXmlReport(): Promise<void> {
