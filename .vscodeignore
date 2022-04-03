@@ -1,6 +1,11 @@
 src/**
+tests/**
 **/*.map
+**/*.vsix
 package-lock.json
 tsconfig.json
+test.tsconfig.json
 .vscode/**
+.vscode-test/**
+.github/**
 .gitignore
