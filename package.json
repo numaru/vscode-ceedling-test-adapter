@@ -25,9 +25,8 @@
     "test",
     "testing"
   ],
-  "main": "out/main.js",
+  "main": "out/src/main.js",
   "scripts": {
-    "postinstall": "node ./node_modules/vscode/bin/install",
     "clean": "rimraf out *.vsix",
     "build": "tsc",
     "watch": "tsc -w",
@@ -50,11 +49,12 @@
   "devDependencies": {
     "@types/glob": "^7.1.3",
     "@types/mocha": "^8.2.0",
+    "@types/vscode": "^1.23.0",
+    "@vscode/test-electron": "^2.1.3",
     "glob": "^7.1.6",
     "mocha": "^8.3.0",
-    "typescript": "^3.3.3",
+    "typescript": "^4.6.3",
     "vsce": "^1.57.0",
-    "vscode": "^1.1.29",
     "vscode-test": "^1.5.1"
   },
   "engines": {
@@ -209,6 +209,22 @@
               }
             }
           }
+        },
+        "ceedlingExplorer.testCaseMacroAliases": {
+          "markdownDescription": "An array of aliases for the `TEST_CASE` macro",
+          "type": "array",
+          "default": [
+            "TEST_CASE"
+          ],
+          "scope": "resource"
+        },
+        "ceedlingExplorer.testRangeMacroAliases": {
+          "markdownDescription": "An array of aliases for the `TEST_RANGE` macro",
+          "type": "array",
+          "default": [
+            "TEST_RANGE"
+          ],
+          "scope": "resource"
         }
       }
     },

@@ -328,6 +328,14 @@ export class CeedlingAdapter implements TestAdapter {
         return testCommandArgs;
     }
 
+    private getTestCaseMacroAliases(): Array<string> {
+        return this.getConfiguration().get<Array<string>>('testCaseMacroAliases', ['TEST_CASE']);
+    }
+
+    private getTestRangeMacroAliases(): Array<string> {
+        return this.getConfiguration().get<Array<string>>('testRangeMacroAliases', ['TEST_RANGE']);
+    }
+
     private getExecutableExtension(ymlProjectData: any = undefined) {
         let ext = process.platform == 'win32' ? '.exe' : '.out';
         if (ymlProjectData) {
@@ -402,8 +410,9 @@ export class CeedlingAdapter implements TestAdapter {
                 }
             } catch (e) { }
         }
+        const macroAliases = [...this.getTestCaseMacroAliases(), ...this.getTestRangeMacroAliases()].join('|');
         this.functionRegex = new RegExp(
-            `^((?:\\s*(?:TEST_CASE|TEST_RANGE)\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
+            `^((?:\\s*(?:${macroAliases})\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
             'gm'
         );
     }
@@ -507,18 +516,19 @@ export class CeedlingAdapter implements TestAdapter {
 
     // Return a list of parameter from a given test token string. An empty array if there is no parameter for this test.
     private parseParametrizedTestCases(testCases: string): Array<any> {
-        const regex = /\s*(TEST_CASE|TEST_RANGE)\s*\((.*)\)\s*$/gm;
+        const testMacroAliases = this.getTestCaseMacroAliases();
+        const macroAliases = [...testMacroAliases, ...this.getTestRangeMacroAliases()].join('|');
+        const regex = new RegExp(`\s*(${macroAliases})\s*\\((.*)\\)\s*$`, 'gm');
         return [...testCases.matchAll(regex)]
             .flatMap((x: any, i: number) => {
-                if (x[1] === 'TEST_CASE') {
+                if (testMacroAliases.includes(x[1])) {
                     return [{ args: x[2], line: i }]
                 } else {
-                    const foo = [...x[2].matchAll(/\[\s*(-?\d+.?\d*),\s*(-?\d+.?\d*),\s*(-?\d+.?\d*)\s*\]/gm)]
+                    return [...x[2].matchAll(/\[\s*(-?\d+.?\d*),\s*(-?\d+.?\d*),\s*(-?\d+.?\d*)\s*\]/gm)]
                         .map((y) => [parseFloat(y[1]), parseFloat(y[2]), parseFloat(y[3])])
                         .map(([start, end, inc]) => Array.from({ length: (end - start) / inc + 1 }, (_, j) => start + j * inc))
-                        .reduce((acc, y) => acc.flatMap(u => y.map(v => [u, v].flat())), [])
-                        .map((y) => { return { args: y.join(', '), line: i } })
-                    return foo;
+                        .reduce((acc: any, y) => acc.flatMap((u: any) => y.map(v => [u, v].flat())))
+                        .map((y: any) => { return { args: y.join(', '), line: i } })
                 }
             });
     }
