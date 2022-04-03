@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.9.0] - 2022-04-03
+
+### Added
+
+* A configurable aliases for the parameterized test macros `TEST_CASE` and `TEST_RANGE`.
+
 ## [1.8.2] - 2021-04-21
 
 ### Fixed
@@ -140,7 +146,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.2...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.0...develop
+[1.9.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.7.0...v1.8.0
