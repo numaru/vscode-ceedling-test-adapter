@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.9.1] - 2022-04-15
+
+### Fixed
+
+* Allow to debug on a multiple folders workspace.
+* Run the `Clean` and `Clobber` commands on all root folders of the workspace.
+
 ## [1.9.0] - 2022-04-03
 
 ### Added
@@ -146,7 +153,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.1...develop
+[1.9.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.1...v1.8.2
 [1.8.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.0...v1.8.1
