@@ -225,6 +225,12 @@
             "TEST_RANGE"
           ],
           "scope": "resource"
+        },
+        "ceedlingExplorer.asciiEscapeSequencesRemoved": {
+          "markdownDescription": "Should the ascii escape sequences be removed from ceedling stdout and stderr",
+          "type": "boolean",
+          "default": true,
+          "scope": "resource"
         }
       }
     },
