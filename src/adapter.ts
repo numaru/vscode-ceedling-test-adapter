@@ -370,6 +370,12 @@ export class CeedlingAdapter implements TestAdapter {
                     shell: this.getShellPath(),
                 },
                 (error, stdout, stderr) => {
+                    const asciiEscapeSequencesRemoved = this.getConfiguration().get<boolean>('asciiEscapeSequencesRemoved', true);
+                    if (asciiEscapeSequencesRemoved) {
+                        // Remove ascii colors from the outputs
+                        stdout = stdout.replace(/\u001B\[[;\d]*m/g, "");
+                        stderr = stderr.replace(/\u001B\[[;\d]*m/g, "");
+                    }
                     resolve({ error, stdout, stderr });
                 },
             )
