@@ -1,11 +1,12 @@
-import * as child_process from 'child_process';
-import * as async_mutex from 'async-mutex';
-import * as tree_kill from 'tree-kill';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as yaml from 'js-yaml';
-import * as xml2js from 'xml2js';
-import * as vscode from 'vscode';
+import child_process from 'child_process';
+import async_mutex from 'async-mutex';
+import tree_kill from 'tree-kill';
+import path from 'path';
+import fs from 'fs';
+import yaml from 'js-yaml';
+import xml2js from 'xml2js';
+import vscode from 'vscode';
+import stripAnsi from 'strip-ansi';
 import {
     TestAdapter,
     TestLoadStartedEvent,
@@ -370,6 +371,12 @@ export class CeedlingAdapter implements TestAdapter {
                     shell: this.getShellPath(),
                 },
                 (error, stdout, stderr) => {
+                    const ansiEscapeSequencesRemoved = this.getConfiguration().get<boolean>('ansiEscapeSequencesRemoved', true);
+                    if (ansiEscapeSequencesRemoved) {
+                        // Remove ansi colors from the outputs
+                        stdout = stripAnsi(stdout);
+                        stderr = stripAnsi(stderr);
+                    }
                     resolve({ error, stdout, stderr });
                 },
             )

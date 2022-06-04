@@ -40,6 +40,7 @@ Property                                | Description
 `ceedlingExplorer.problemMatching`      | Configuration of compiler/linker problem matching. See [Problem matching](#problem%20matching) section for details.
 `ceedlingExplorer.testCaseMacroAliases` | An array of aliases for the `TEST_CASE` macro. By default it is `["TEST_CASE"]`
 `ceedlingExplorer.testRangeMacroAliases`| An array of aliases for the `TEST_RANGE` macro. By default it is `["TEST_RANGE"]`
+`ceedlingExplorer.ansiEscapeSequencesRemoved`| Should the ansi escape sequences be removed from ceedling stdout and stderr. By default it is `true`
 <br>
 
 ### Problem matching
