@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-* A option to remove the ASCII escape sequences.
+* A option to remove the ANSI escape sequences.
 
 ## [1.9.1] - 2022-04-15
 
