@@ -7,7 +7,7 @@ import {
     Uri,
     languages
 } from 'vscode';
-import * as path from 'path';
+import path from 'path';
 
 export interface ProblemMatchingPattern {
     scanStdout: boolean;
