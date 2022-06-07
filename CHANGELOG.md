@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.10.1] - 2022-06-07
+
+### Fixed
+
+* Fix the async-mutex import.
+
 ## [1.10.0] - 2022-06-04
 
 ### Added
@@ -159,8 +165,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.0...develop
-[1.9.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.1...v1.10.0
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...develop
+[1.10.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.2...v1.9.0
 [1.8.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.8.1...v1.8.2
