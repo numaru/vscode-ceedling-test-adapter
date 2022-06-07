@@ -1,5 +1,5 @@
 import child_process from 'child_process';
-import async_mutex from 'async-mutex';
+import {Mutex} from 'async-mutex';
 import tree_kill from 'tree-kill';
 import path from 'path';
 import fs from 'fs';
@@ -47,7 +47,7 @@ export class CeedlingAdapter implements TestAdapter {
     private isCanceled: boolean = false;
     private isPrettyTestLabelEnable: boolean = false;
     private isPrettyTestFileLabelEnable: boolean = false;
-    private ceedlingMutex: async_mutex.Mutex = new async_mutex.Mutex();
+    private ceedlingMutex: Mutex = new Mutex();
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
