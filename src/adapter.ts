@@ -1,5 +1,6 @@
 import child_process from 'child_process';
-import {Mutex} from 'async-mutex';
+import util from 'util';
+import { Mutex } from 'async-mutex';
 import tree_kill from 'tree-kill';
 import path from 'path';
 import fs from 'fs';
@@ -19,6 +20,7 @@ import {
     TestInfo
 } from 'vscode-test-adapter-api';
 import { ProblemMatcher, ProblemMatchingPattern } from './problemMatcher';
+import { Logger } from './logger'
 
 export class CeedlingAdapter implements TestAdapter {
     private disposables: { dispose(): void }[] = [];
@@ -62,7 +64,8 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     constructor(
-        public readonly workspaceFolder: vscode.WorkspaceFolder
+        public readonly workspaceFolder: vscode.WorkspaceFolder,
+        private readonly logger: Logger,
     ) {
         this.disposables.push(this.testsEmitter);
         this.disposables.push(this.testStatesEmitter);
@@ -85,10 +88,13 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async load(): Promise<void> {
+        this.logger.trace(`load()`);
+
         this.testsEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
 
         const errorMessage = await this.sanityCheck();
         if (errorMessage) {
+            this.logger.error(errorMessage);
             this.testsEmitter.fire({
                 type: 'finished',
                 errorMessage: errorMessage
@@ -120,6 +126,8 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async run(testIds: string[]): Promise<void> {
+        this.logger.trace(`run(testIds=${util.format(testIds)})`);
+
         // Ceedling always run the whole file and so run the top test suite
         testIds = testIds.map((x) => x.replace(/::.*/, ''));
 
@@ -141,11 +149,12 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     async debug(tests: string[]): Promise<void> {
+        this.logger.trace(`debug(tests=${util.format(tests)})`);
         try {
             // Get and validate debug configuration
             const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
             if (!debugConfiguration) {
-                vscode.window.showErrorMessage("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
+                this.logger.showError("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
                 return;
             }
 
@@ -160,7 +169,7 @@ export class CeedlingAdapter implements TestAdapter {
             const args = this.getTestCommandArgs(testToExec);
             const result = await this.execCeedling(args);
             if (result.error && /ERROR: Ceedling Failed/.test(result.stdout)) {
-                vscode.window.showErrorMessage("Could not compile test, see test output for more details.");
+                this.logger.showError("Could not compile test, see test output for more details.");
                 return;
             }
 
@@ -173,17 +182,17 @@ export class CeedlingAdapter implements TestAdapter {
 
             // Set current test executable
             if (this.detectTestSpecificDefines(ymlProjectData, testFileName))
-                this.debugTestExecutable = `${testFileName}/${testFileName}${ext}`
+                this.setDebugTestExecutable(`${testFileName}/${testFileName}${ext}`);
             else
-                this.debugTestExecutable = `${testFileName}${ext}`;
+                this.setDebugTestExecutable(`${testFileName}${ext}`);
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
-                vscode.window.showErrorMessage("Debugger could not be started.");
+                this.logger.showError("Debugger could not be started.");
         }
         finally {
             // Reset current test executable
-            this.debugTestExecutable = "";
+            this.setDebugTestExecutable("");
         }
     }
 
@@ -191,7 +200,13 @@ export class CeedlingAdapter implements TestAdapter {
         return this.debugTestExecutable;
     }
 
+    setDebugTestExecutable(path: string) {
+        this.debugTestExecutable = path;
+        this.logger.info(`Set the debugTestExecutable to ${this.debugTestExecutable}`);
+    }
+
     async clean(): Promise<void> {
+        this.logger.trace(`clean()`);
         const result = await vscode.window.withProgress(
             {
                 title: "Ceedling Clean",
@@ -206,11 +221,12 @@ export class CeedlingAdapter implements TestAdapter {
             }
         );
         if (result.error) {
-            vscode.window.showErrorMessage("Ceedling clean failed");
+            this.logger.showError("Ceedling clean failed");
         }
     }
 
     async clobber(): Promise<void> {
+        this.logger.trace(`clobber()`);
         const result = await vscode.window.withProgress(
             {
                 title: "Ceedling Clobber",
@@ -225,18 +241,22 @@ export class CeedlingAdapter implements TestAdapter {
             }
         );
         if (result.error) {
-            vscode.window.showErrorMessage("Ceedling clobber failed");
+            this.logger.showError("Ceedling clobber failed");
         }
     }
 
     cancel(): void {
+        this.logger.trace(`cancel()`);
         this.isCanceled = true;
         if (this.ceedlingProcess !== undefined) {
-            tree_kill(this.ceedlingProcess.pid);
+            if (this.ceedlingProcess.pid) {
+                tree_kill(this.ceedlingProcess.pid);
+            }
         }
     }
 
     dispose(): void {
+        this.logger.trace(`dispose()`);
         this.cancel();
         for (const disposable of this.disposables) {
             disposable.dispose();
@@ -322,10 +342,12 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getTestCommandArgs(testToExec: string): Array<string> {
+        // Keep only the filename of the test 'test/test_foo.c' -> 'test_foo.c'
+        const testSuiteFilename = testToExec.replace(/^.*[\\/]/, "");
         const defaultTestCommandArgs = ["test:${TEST_ID}"];
         const testCommandArgs = this.getConfiguration()
             .get<Array<string>>('testCommandArgs', defaultTestCommandArgs)
-            .map(x => x.replace("${TEST_ID}", testToExec));
+            .map(x => x.replace("${TEST_ID}", testSuiteFilename));
         return testCommandArgs;
     }
 
@@ -363,13 +385,13 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
+        this.logger.trace(`execCeedling(args=${util.format(args)})`);
+        const command = this.getCeedlingCommand(args);
+        const cwd = this.getProjectPath();
+        const shell = this.getShellPath();
         return new Promise<any>((resolve) => {
             this.ceedlingProcess = child_process.exec(
-                this.getCeedlingCommand(args),
-                {
-                    cwd: this.getProjectPath(),
-                    shell: this.getShellPath(),
-                },
+                command, { cwd: cwd, shell: shell },
                 (error, stdout, stderr) => {
                     const ansiEscapeSequencesRemoved = this.getConfiguration().get<boolean>('ansiEscapeSequencesRemoved', true);
                     if (ansiEscapeSequencesRemoved) {
@@ -377,6 +399,12 @@ export class CeedlingAdapter implements TestAdapter {
                         stdout = stripAnsi(stdout);
                         stderr = stripAnsi(stderr);
                     }
+                    this.logger.debug(`exec(command=${util.format(command)}, ` +
+                        `cwd=${util.format(cwd)}, ` +
+                        `shell=${util.format(shell)}, ` +
+                        `error=${util.format(error)}, ` +
+                        `stdout=${util.format(stdout)}, ` +
+                        `stderr=${util.format(stderr)})`);
                     resolve({ error, stdout, stderr });
                 },
             )
@@ -688,7 +716,7 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getYmlProjectData(): Promise<any | undefined> {
-        return new Promise<void>((resolve) => {
+        return new Promise<any | undefined>((resolve) => {
             fs.readFile(this.getYmlProjectPath(), 'utf8', (error, data) => {
                 if (error) {
                     resolve(undefined);
@@ -780,7 +808,7 @@ export class CeedlingAdapter implements TestAdapter {
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const args = this.getTestCommandArgs(testSuite.id.replace(/::.*/, ''));
+            const args = this.getTestCommandArgs(testSuite.id);
             const result = await this.execCeedling(args);
             const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
 

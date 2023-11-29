@@ -2,7 +2,9 @@ import vscode from 'vscode';
 import { TestHub, testExplorerExtensionId } from 'vscode-test-adapter-api';
 import { TestAdapterRegistrar } from 'vscode-test-adapter-util';
 import { CeedlingAdapter } from './adapter';
+import { Logger } from './logger';
 
+const logger = new Logger();
 let adapters: CeedlingAdapter[] = [];
 
 function debugTestExecutable(): string | null {
@@ -13,8 +15,8 @@ function debugTestExecutable(): string | null {
             return debugTestExecutable;
         }
     }
-    vscode.window.showErrorMessage("No debug test executable found");
-    vscode.window.showInformationMessage(
+    logger.showError("No debug test executable found");
+    logger.showInfo(
         "A debug configuration with a path containing `${command:ceedlingExplorer.debugTestExecutable}` " +
         "cannot be started from F5 or the Run pannel. It should be started from a bug icon in the Test pannel."
     );
@@ -41,10 +43,11 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.debugTestExecutable", debugTestExecutable));
         context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.clean", ceedlingClean));
         context.subscriptions.push(vscode.commands.registerCommand("ceedlingExplorer.clobber", ceedlingClobber));
+        context.subscriptions.push(logger);
         context.subscriptions.push(new TestAdapterRegistrar(
             testExplorerExtension.exports,
             workspaceFolder => {
-                let adapter = new CeedlingAdapter(workspaceFolder);
+                let adapter = new CeedlingAdapter(workspaceFolder, logger);
                 adapters.push(adapter);
                 return adapter;
             }

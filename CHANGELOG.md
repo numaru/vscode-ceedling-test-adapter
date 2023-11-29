@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.11.0] - 2023-11-29
+
+### Added
+
+* Add a vscode log channel for the extension.
+
+### Fixed
+
+* Do not use the path as test suite id, only the file name.
+
 ## [1.10.1] - 2022-06-07
 
 ### Fixed
@@ -165,7 +175,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.11.0...develop
+[1.11.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.0...v1.9.1
