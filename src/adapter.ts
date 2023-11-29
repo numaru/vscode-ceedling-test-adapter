@@ -249,7 +249,9 @@ export class CeedlingAdapter implements TestAdapter {
         this.logger.trace(`cancel()`);
         this.isCanceled = true;
         if (this.ceedlingProcess !== undefined) {
+            if (this.ceedlingProcess.pid) {
             tree_kill(this.ceedlingProcess.pid);
+            }
         }
     }
 
@@ -712,7 +714,7 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getYmlProjectData(): Promise<any | undefined> {
-        return new Promise<void>((resolve) => {
+        return new Promise<any | undefined>((resolve) => {
             fs.readFile(this.getYmlProjectPath(), 'utf8', (error, data) => {
                 if (error) {
                     resolve(undefined);
