@@ -250,7 +250,7 @@ export class CeedlingAdapter implements TestAdapter {
         this.isCanceled = true;
         if (this.ceedlingProcess !== undefined) {
             if (this.ceedlingProcess.pid) {
-            tree_kill(this.ceedlingProcess.pid);
+                tree_kill(this.ceedlingProcess.pid);
             }
         }
     }
@@ -342,10 +342,12 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getTestCommandArgs(testToExec: string): Array<string> {
+        // Keep only the filename of the test 'test/test_foo.c' -> 'test_foo.c'
+        const testSuiteFilename = testToExec.replace(/^.*[\\/]/, "");
         const defaultTestCommandArgs = ["test:${TEST_ID}"];
         const testCommandArgs = this.getConfiguration()
             .get<Array<string>>('testCommandArgs', defaultTestCommandArgs)
-            .map(x => x.replace("${TEST_ID}", testToExec));
+            .map(x => x.replace("${TEST_ID}", testSuiteFilename));
         return testCommandArgs;
     }
 
@@ -806,7 +808,7 @@ export class CeedlingAdapter implements TestAdapter {
             /* Delete the xml report from the artifacts */
             await this.deleteXmlReport();
             /* Run the test and get stdout */
-            const args = this.getTestCommandArgs(testSuite.id.replace(/::.*/, ''));
+            const args = this.getTestCommandArgs(testSuite.id);
             const result = await this.execCeedling(args);
             const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
 
