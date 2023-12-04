@@ -138,6 +138,14 @@ Example configuration with Native Debug (`webfreak.debug`):
 }
 ```
 
+`Ceedling` changed the path to the executable program in different versions of `Ceedling`.
+Based on the example configuration shown above the `program` key needs to be configured accordingly to the `Ceedling` version as follows:
+
+| `Ceedling` version | `program` key setting                                                                                                        |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------|
+| <= 0.31.1          | `${workspaceFolder}/build/test/out/${command:ceedlingExplorer.debugTestExecutable}`                                          |
+| >= 0.32.0          | `${workspaceFolder}/build/test/out/${command:ceedlingExplorer.testFileName}/${command:ceedlingExplorer.debugTestExecutable}` |
+
 ## Known issues
 
 * Cannot use both the junit Ceedling plugin and the xml plugin required by this extension because they are using the same ouput filename by default. If the version of the Ceedling you are using is greather than 0.28.3, you should be able to configure the output filename. [#20](https://github.com/numaru/vscode-ceedling-test-adapter/issues/20)
