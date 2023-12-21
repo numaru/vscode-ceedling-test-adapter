@@ -302,6 +302,11 @@ export class CeedlingAdapter implements TestAdapter {
         return shellPath !== "null" ? shellPath : undefined;
     }
 
+    private getProjectCustom(): string {
+        const projectCustom = this.getConfiguration().get('projectCustom', 'null');
+        return projectCustom !== "null" ? projectCustom : "";
+    }
+
     private getProjectPath(): string {
         const defaultProjectPath = '.';
         const projectPath = this.getConfiguration().get<string>('projectPath', defaultProjectPath);
@@ -337,7 +342,9 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private getCeedlingCommand(args: ReadonlyArray<string>) {
-        const line = `ceedling ${args.join(" ")}`;
+        const projectCustom = this.getProjectCustom();
+        const project = projectCustom ? `project:${projectCustom} ` : '';
+        const line = `ceedling ${project}${args.join(" ")}`;
         return line;
     }
 
