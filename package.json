@@ -78,11 +78,11 @@
           "scope": "resource"
         },
         "ceedlingExplorer.projectCustom": {
-					"markdownDescription": "Optionnal YAML file, configuration of this file will be merged with the main project file (project.yml) at runtime. Example `your_config.yml` will be used as `ceedling project:your_config.yml` usefull to add specific compiler configurations",
-					"type": "string",
-					"default": "null",
-					"scope": "resource"
-				},
+          "markdownDescription": "Optionnal YAML file, configuration of this file will be merged with the main project file (project.yml) at runtime. Example `your_config.yml` will be used as `ceedling project:your_config.yml` usefull to add specific compiler configurations",
+          "type": "string",
+          "default": "null",
+          "scope": "resource"
+          },
         "ceedlingExplorer.shellPath": {
           "description": "Path to the shell where Ceedling is installed",
           "type": "string",
