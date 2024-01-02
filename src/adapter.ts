@@ -8,6 +8,7 @@ import yaml from 'js-yaml';
 import xml2js from 'xml2js';
 import vscode from 'vscode';
 import stripAnsi from 'strip-ansi';
+import semver from 'semver';
 import {
     TestAdapter,
     TestLoadStartedEvent,
@@ -181,7 +182,8 @@ export class CeedlingAdapter implements TestAdapter {
             const testFileName = `${/([^/]*).c$/.exec(testToExec)![1]}`;
 
             // Set current test executable
-            if (this.detectTestSpecificDefines(ymlProjectData, testFileName))
+            const ceedlingVersion = await this.getCeedlingVersion();
+            if (this.detectTestSpecificDefines(ymlProjectData, testFileName) || semver.satisfies(ceedlingVersion, ">0.31.1"))
                 this.setDebugTestExecutable(`${testFileName}/${testFileName}${ext}`);
             else
                 this.setDebugTestExecutable(`${testFileName}${ext}`);
@@ -382,6 +384,17 @@ export class CeedlingAdapter implements TestAdapter {
             } catch (e) { }
         }
         return false;
+    }
+
+    private async getCeedlingVersion(): Promise<string> {
+        const result = await this.execCeedling(['version']);
+        const regex = new RegExp('^\\s*Ceedling::\\s*(.*)$', 'gm');
+        const match = regex.exec(result.stdout);
+        if (!match) {
+            this.logger.error(`fail to get the ceedling version: ${util.format(result)}`);
+            return '0.0.0';
+        }
+        return match[1];
     }
 
     private execCeedling(args: ReadonlyArray<string>): Promise<any> {
