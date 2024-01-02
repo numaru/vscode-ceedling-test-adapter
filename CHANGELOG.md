@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.12.0] - 2024-01-02
+
+### Added
+
+* Add debug compatibility for ceedling >= v0.32.0.
+* Use the esbuild bundler to shrink the size of the release.
+
 ## [1.11.0] - 2023-11-29
 
 ### Added
@@ -175,7 +182,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.11.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.12.0...develop
+[1.12.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.9.1...v1.10.0
