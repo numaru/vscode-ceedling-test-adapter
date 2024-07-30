@@ -388,7 +388,7 @@ export class CeedlingAdapter implements TestAdapter {
 
     private async getCeedlingVersion(): Promise<string> {
         const result = await this.execCeedling(['version']);
-        const regex = new RegExp('Ceedling => (.*)$|Ceedling:: *(.*)$', 'gm');
+        const regex = new RegExp('Ceedling => *([\d\.]*)$|Ceedling:: *([\d\.]*)$', 'gm');
         const match = regex.exec(result.stdout);
         if (!match) {
             this.logger.error(`fail to get the ceedling version: ${util.format(result)}`);
