@@ -22,6 +22,7 @@ import {
 import xml2js from 'xml2js';
 import { Logger } from './logger';
 import { ProblemMatcher, ProblemMatchingPattern } from './problemMatcher';
+import deepmerge from 'deepmerge';
 
 type ProjectData = {
     projectPath: string,
@@ -966,8 +967,8 @@ export class CeedlingAdapter implements TestAdapter {
                             resolve(result);
                         }
                         try {
-                            const defaultResult = yaml.safeLoad(data);
-                            const mergedResult = Object.assign({}, defaultResult, result);
+                            const defaultResult = yaml.safeLoad(data) || {};
+                            const mergedResult = deepmerge(defaultResult, result || {});
                             resolve(mergedResult);
                         } catch (e) {
                             resolve(result);
