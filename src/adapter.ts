@@ -37,6 +37,12 @@ type ProjectData = {
     }
 }
 
+type ProjectConfig = {
+    path: string,
+    debugLaunchConfig: string,
+    name?: string,
+}
+
 interface ExtendedTestSuiteInfo extends TestSuiteInfo {
     projectKey: string | undefined,
     isProjectRoot: boolean
@@ -337,7 +343,7 @@ export class CeedlingAdapter implements TestAdapter {
             const result = await this.execCeedling([`summary`]);
             if (result.error) {
                 return `Ceedling failed to run in the configured shell. ` +
-                    'Please check if you can run `ceedling summary` in your shell.\n' +                   
+                    'Please check if you can run `ceedling summary` in your shell.\n' +
                     `Please check the ceedlingExplorer.shellPath option.\n` +
                     `${result.stdout}\n${result.stderr}`
             }
@@ -392,40 +398,37 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private loadProjectPaths() {
-        const projectPaths: Array<{
-            path: string;
-            debugLaunchConfig: string;
-        }> = this.getConfiguration().get<object>('projects', []) as Array<{
-            path: string;
-            debugLaunchConfig: string;
-        }>
-            ;
+        const projectConfigs = this.getConfiguration().get<object>('projects', []) as Array<ProjectConfig>;
         this.projectData = {};
         let workspacePath = this.workspaceFolder.uri.fsPath;
-        projectPaths.forEach(projectPath => {
+        projectConfigs.forEach(projectConfig => {
             let ymlName = 'project.yml';
-            let key = projectPath.path;
-            if (projectPath.path.endsWith('.yml')) {
-                //get file name
-                const split = projectPath.path.split('/');
+            let key = projectConfig.path;
+            if (projectConfig.path.endsWith('.yml')) {
+                const split = projectConfig.path.split('/');
                 ymlName = split[split.length - 1];
-                key = ymlName.replace('.yml', '');
-                projectPath.path = projectPath.path.replace(ymlName, '');
-                if (projectPath.path == '') {
-                    projectPath.path = '.';
+                if (ymlName != 'project.yml') {
+                    key = ymlName.replace('.yml', '');
                 }
+                projectConfig.path = projectConfig.path.replace(ymlName, '');
+                if (projectConfig.path == '') {
+                    projectConfig.path = '.';
+                }
+            }
+            if (projectConfig.name) {
+                key = projectConfig.name;
             }
             // Workaround: Uppercase disk letters are required on windows to be able to generate xml gcov reports
             if (process.platform == 'win32') {
                 workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
             }
-            const absolutePath = path.resolve(workspacePath, projectPath.path);
+            const absolutePath = path.resolve(workspacePath, projectConfig.path);
             if (!(fs.existsSync(absolutePath) && fs.lstatSync(absolutePath).isDirectory())) {
                 throw `The project path ${absolutePath} does not exist or is not a directory.`;
             } else {
                 this.projectData[key] = {
-                    debugLaunchConfig: projectPath.debugLaunchConfig,
-                    projectPath: projectPath.path,
+                    debugLaunchConfig: projectConfig.debugLaunchConfig,
+                    projectPath: projectConfig.path,
                     ymlFileName: ymlName,
                     absPath: absolutePath,
                     files: {}
@@ -440,7 +443,7 @@ export class CeedlingAdapter implements TestAdapter {
                 absPath: path.resolve(workspacePath, "."),
                 files: {}
             };
-        }        
+        }
     }
 
     private async loadFileLists(fileType: keyof ProjectData["files"]): Promise<void> {
@@ -457,7 +460,7 @@ export class CeedlingAdapter implements TestAdapter {
                     this.projectData[projectKey].files[fileType] = files;
                 } catch (e) {
                     this.logger.error(`Failed to load ${fileType} files: ${util.format(e)}`);
-                }                
+                }
             }
         };
     }

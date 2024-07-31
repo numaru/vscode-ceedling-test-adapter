@@ -96,6 +96,10 @@
               "debugLaunchConfig": {
                 "description": "Name of the debug configuration to use for debugging tests in the launch.json file",
                 "type": "string"
+              },
+              "name": {
+                "description": "Name for the project tests folder. If not defined, the yml or folder name is used",
+                "type": "string"
               }
             },
             "required": [
