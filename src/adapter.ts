@@ -656,10 +656,17 @@ export class CeedlingAdapter implements TestAdapter {
 	                }
 	            } catch (e) { }
 	        }
-        }
-        else
-        {
+        } else {
         	reportFilename = 'cppunit_tests_report.xml';
+
+            if (ymlProjectData) {
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':report_tests_log_factory'][':cppunit'][':filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) { }
+            }
         }
         this.reportFilenames[projectKey] = reportFilename;
     }
