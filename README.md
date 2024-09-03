@@ -30,7 +30,7 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 * Open the workspace or folder containing your Ceedling project
 * Configure your `project.yml` path in the VS Code's settings if required [see below](#options)
 * Configure the shell path where Ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
-* Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
+* Enable the `xml_tests_report` Ceedling plugin (v0.31.1) or `report_tests_log_factory` Ceedling plugin and `cppunit` option (v1.0.0) in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
 * Open the Test view
 * Run your tests using the ![Run](img/run.png) icons in the Test Explorer or the CodeLenses in your test file
 
