@@ -647,13 +647,26 @@ export class CeedlingAdapter implements TestAdapter {
 
     private setXmlReportPath(projectKey: string, ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
-        if (ymlProjectData) {
-            try {
-                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
-                if (ymlProjectReportFilename != undefined) {
-                    reportFilename = ymlProjectReportFilename;
-                }
-            } catch (e) { }
+        if (this.isOldCeedlingVersion) {
+	        if (ymlProjectData) {
+	            try {
+	                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+	                if (ymlProjectReportFilename != undefined) {
+	                    reportFilename = ymlProjectReportFilename;
+	                }
+	            } catch (e) { }
+	        }
+        } else {
+        	reportFilename = 'cppunit_tests_report.xml';
+
+            if (ymlProjectData) {
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':report_tests_log_factory'][':cppunit'][':filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) { }
+            }
         }
         this.reportFilenames[projectKey] = reportFilename;
     }
