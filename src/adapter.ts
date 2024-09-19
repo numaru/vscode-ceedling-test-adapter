@@ -465,13 +465,22 @@ export class CeedlingAdapter implements TestAdapter {
         );
     }
 
+    private parseEnvironmentVariableString(inputString: string) {
+        const resultString = inputString.replace(/#\{ENV\['(\w+)'\]\}/g, (_, variableName) => {
+            const value = process.env[variableName];
+            return value || '';
+        });
+
+        return resultString;
+    }
+
     private setBuildDirectory(ymlProjectData: any = undefined) {
         let buildDirectory = 'build';
         if (ymlProjectData) {
             try {
                 const ymlProjectBuildDirectory = ymlProjectData[':project'][':build_root'];
                 if (ymlProjectBuildDirectory != undefined) {
-                    buildDirectory = ymlProjectBuildDirectory;
+                    buildDirectory = this.parseEnvironmentVariableString(ymlProjectBuildDirectory);
                 }
             } catch (e) { }
         }
