@@ -465,13 +465,33 @@ export class CeedlingAdapter implements TestAdapter {
         );
     }
 
-    private parseEnvironmentVariableString(inputString: string) {
-        const resultString = inputString.replace(/#\{ENV\['(\w+)'\]\}/g, (_, variableName) => {
-            const value = process.env[variableName];
-            return value || '';
-        });
+    private execRubySync(args: ReadonlyArray<string>): string {
+        this.logger.trace(`execRuby(args=${util.format(args)})`);
+        const command = `ruby -e "${args.join(" ").replace(/"/g, '\\"')}"`;
+        const cwd = this.getProjectPath();
+        const shell = this.getShellPath();
+        const stdout = child_process.execSync(
+            command, { cwd: cwd, shell: shell },
+        ).toString().trim();
+        this.logger.debug(`execSync(command=${util.format(command)}, ` +
+            `cwd=${util.format(cwd)}, ` +
+            `shell=${util.format(shell)}, ` +
+            `stdout=${util.format(stdout)}`);
+        return stdout;
+    }
 
-        return resultString;
+    private evalRuby(str: string) {
+        const evalRuby = this.getConfiguration().get<boolean>('evalRubyInStrings', false);
+        if (!evalRuby) {
+            return str;
+        }
+        return str.replace(/#\{(.+)\}/g, (_, match) => {
+            const stdout = this.execRubySync(["p", match]);
+            if (stdout.startsWith('"') && stdout.endsWith('"')) {
+                return stdout.slice(1, -1);
+            }
+            return stdout;
+        });
     }
 
     private setBuildDirectory(ymlProjectData: any = undefined) {
@@ -480,7 +500,7 @@ export class CeedlingAdapter implements TestAdapter {
             try {
                 const ymlProjectBuildDirectory = ymlProjectData[':project'][':build_root'];
                 if (ymlProjectBuildDirectory != undefined) {
-                    buildDirectory = this.parseEnvironmentVariableString(ymlProjectBuildDirectory);
+                    buildDirectory = this.evalRuby(ymlProjectBuildDirectory);
                 }
             } catch (e) { }
         }

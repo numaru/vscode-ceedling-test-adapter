@@ -41,6 +41,7 @@ Property                                | Description
 `ceedlingExplorer.testCaseMacroAliases` | An array of aliases for the `TEST_CASE` macro. By default it is `["TEST_CASE"]`
 `ceedlingExplorer.testRangeMacroAliases`| An array of aliases for the `TEST_RANGE` macro. By default it is `["TEST_RANGE"]`
 `ceedlingExplorer.ansiEscapeSequencesRemoved`| Should the ansi escape sequences be removed from ceedling stdout and stderr. By default it is `true`
+`ceedlingExplorer.evalRubyInStrings`| Evaluate the #{ruby_code} in the string using the ruby cli. By default it is `false`
 <br>
 
 ### Problem matching

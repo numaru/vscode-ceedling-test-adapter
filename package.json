@@ -236,6 +236,12 @@
           "type": "boolean",
           "default": true,
           "scope": "resource"
+        },
+        "ceedlingExplorer.evalRubyInStrings": {
+          "markdownDescription": "Evaluate the #{ruby_code} in the string using the ruby cli",
+          "type": "boolean",
+          "default": false,
+          "scope": "resource"
         }
       }
     },
