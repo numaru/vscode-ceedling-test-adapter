@@ -334,6 +334,13 @@ export class CeedlingAdapter implements TestAdapter {
             disposable.dispose();
         }
         this.disposables = [];
+        // Clear file watches
+        for (const file of this.watchedFileForAutorunList) {
+            fs.unwatchFile(file);
+        }
+        for (const file of this.watchedFileForReloadList) {
+            fs.unwatchFile(file);
+        }
     }
 
     private async sanityCheck(): Promise<string | void> {
@@ -950,7 +957,7 @@ export class CeedlingAdapter implements TestAdapter {
                 return this.mergeYmlProjectData(projectKey);
             }
             return new Promise<any | undefined>((resolve) => {
-                project_yml = this.getYmlProjectPath(projectKey);
+                const project_yml = this.getYmlProjectPath(projectKey);
                 fs.readFile(project_yml, 'utf8', (error, data) => {
                     if (error) {
                         this.logger.error(`Failed to read YAML file '${project_yml}': ${util.format(error)}`);
@@ -1021,12 +1028,17 @@ export class CeedlingAdapter implements TestAdapter {
 
     private deleteXmlReport(projectKey: string): Promise<void> {
         return new Promise<void>((resolve) => {
-            fs.unlink(this.getXmlReportPath(projectKey), (error) => {
-                if (error) {
-                    this.logger.error(`Failed to delete XML report: ${util.format(error)}`);
-                }
+            const xmlReportPath = this.getXmlReportPath(projectKey);
+            if (fs.existsSync(xmlReportPath)) {
+                fs.unlink(xmlReportPath, (error) => {
+                    if (error) {
+                        this.logger.error(`Failed to delete XML report: ${util.format(error)}`);
+                    }
+                    resolve();
+                });
+            } else {
                 resolve();
-            });
+            }
         });
     }
 
