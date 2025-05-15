@@ -334,6 +334,13 @@ export class CeedlingAdapter implements TestAdapter {
             disposable.dispose();
         }
         this.disposables = [];
+        // Clear file watches
+        for (const file of this.watchedFileForAutorunList) {
+            fs.unwatchFile(file);
+        }
+        for (const file of this.watchedFileForReloadList) {
+            fs.unwatchFile(file);
+        }
     }
 
     private async sanityCheck(): Promise<string | void> {
@@ -364,7 +371,7 @@ export class CeedlingAdapter implements TestAdapter {
     private async checkYmlProjectData(projectKey: string): Promise<string | void> {
         const ymlProjectData = await this.getYmlProjectData(projectKey)
         if (!ymlProjectData) {
-            return `Failed to find the project.yml file for ${projectKey}. ` +
+            return `Failed to find or load the project.yml file for ${projectKey}. ` +
                 `Please check the ceedlingExplorer.projectPath option.`;
         }
         if (!this.isOldCeedlingVersion) {
@@ -648,16 +655,16 @@ export class CeedlingAdapter implements TestAdapter {
     private setXmlReportPath(projectKey: string, ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
         if (this.isOldCeedlingVersion) {
-	        if (ymlProjectData) {
-	            try {
-	                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
-	                if (ymlProjectReportFilename != undefined) {
-	                    reportFilename = ymlProjectReportFilename;
-	                }
-	            } catch (e) { }
-	        }
+            if (ymlProjectData) {
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) { }
+            }
         } else {
-        	reportFilename = 'cppunit_tests_report.xml';
+            reportFilename = 'cppunit_tests_report.xml';
 
             if (ymlProjectData) {
                 try {
@@ -950,14 +957,17 @@ export class CeedlingAdapter implements TestAdapter {
                 return this.mergeYmlProjectData(projectKey);
             }
             return new Promise<any | undefined>((resolve) => {
-                fs.readFile(this.getYmlProjectPath(projectKey), 'utf8', (error, data) => {
+                const project_yml = this.getYmlProjectPath(projectKey);
+                fs.readFile(project_yml, 'utf8', (error, data) => {
                     if (error) {
+                        this.logger.error(`Failed to read YAML file '${project_yml}': ${util.format(error)}`);
                         resolve(undefined);
                     }
                     try {
                         const result = yaml.safeLoad(data);
                         resolve(result);
                     } catch (e) {
+                        this.logger.error(`Failed to parse YAML file '${project_yml}': ${util.format(e)}`);
                         resolve(undefined);
                     }
                 });
@@ -971,8 +981,10 @@ export class CeedlingAdapter implements TestAdapter {
 
     private mergeYmlProjectData(projectKey: string): Promise<any | undefined> {
         return new Promise<any | undefined>((resolve) => {
-            fs.readFile(this.getYmlProjectPath(projectKey), 'utf8', (error, data) => {
+            const project_data = this.getYmlProjectPath(projectKey);
+            fs.readFile(project_data, 'utf8', (error, data) => {
                 if (error) {
+                    this.logger.error(`Failed to read YAML file: ${util.format(error)}`);
                     resolve(undefined);
                 }
                 try {
@@ -980,6 +992,7 @@ export class CeedlingAdapter implements TestAdapter {
                     const defaultYmlPath = path.resolve(this.projectData[projectKey].absPath, 'project.yml');
                     fs.readFile(defaultYmlPath, 'utf8', (error, data) => {
                         if (error) {
+                            this.logger.error(`Failed to read default YAML file: ${util.format(error)}`);
                             resolve(result);
                         }
                         try {
@@ -987,10 +1000,12 @@ export class CeedlingAdapter implements TestAdapter {
                             const mergedResult = deepmerge(defaultResult, result || {});
                             resolve(mergedResult);
                         } catch (e) {
+                            this.logger.error(`Failed to parse default YAML file: ${util.format(e)}`);
                             resolve(result);
                         }
                     });
                 } catch (e) {
+                    this.logger.error(`Failed to parse YAML file: ${util.format(e)}`);
                     resolve(undefined);
                 }
             });
@@ -1013,9 +1028,17 @@ export class CeedlingAdapter implements TestAdapter {
 
     private deleteXmlReport(projectKey: string): Promise<void> {
         return new Promise<void>((resolve) => {
-            fs.unlink(this.getXmlReportPath(projectKey), () => {
+            const xmlReportPath = this.getXmlReportPath(projectKey);
+            if (fs.existsSync(xmlReportPath)) {
+                fs.unlink(xmlReportPath, (error) => {
+                    if (error) {
+                        this.logger.error(`Failed to delete XML report: ${util.format(error)}`);
+                    }
+                    resolve();
+                });
+            } else {
                 resolve();
-            });
+            }
         });
     }
 
@@ -1024,10 +1047,12 @@ export class CeedlingAdapter implements TestAdapter {
         return new Promise<void>((resolve) => {
             fs.readFile(this.getXmlReportPath(projectKey), 'utf8', (error, data) => {
                 if (error) {
+                    this.logger.error(`Failed to read XML report: ${util.format(error)}`);
                     resolve(undefined);
                 }
                 parser.parseString(data, (error: any, result: any) => {
                     if (error) {
+                        this.logger.error(`Failed to parse XML report: ${util.format(error)}`);
                         resolve(undefined);
                     }
                     resolve(result);
@@ -1140,4 +1165,3 @@ export class CeedlingAdapter implements TestAdapter {
         this.testStatesEmitter.fire({ type: 'suite', suite: testSuite, state: 'completed' } as TestSuiteEvent);
     }
 }
-
