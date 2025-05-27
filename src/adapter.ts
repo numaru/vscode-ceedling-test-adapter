@@ -93,6 +93,8 @@ export class CeedlingAdapter implements TestAdapter {
 
     private projectData: Record<string, ProjectData> = {};
 
+    private debugSessionDisposable: vscode.Disposable | undefined;
+
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
     }
@@ -113,6 +115,20 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
         this.disposables.push(this.problemMatcher);
+
+        // Add debug session termination listener
+        this.debugSessionDisposable = vscode.debug.onDidTerminateDebugSession((session) => {
+            for (const projectKey in this.projectData) {
+                if (session.name === this.projectData[projectKey].debugLaunchConfig) {
+                    this.cancel(); // Terminate any running Ceedling processes
+                    // trigger finish event
+                    this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+                    break;
+                }
+            }
+        });
+        this.disposables.push(this.debugSessionDisposable);
+	
         // callback receive when a config property is modified
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("ceedlingExplorer.problemMatching")) {
@@ -236,15 +252,30 @@ export class CeedlingAdapter implements TestAdapter {
             const testSuites = this.getTestSuitesFromTestIds(tests);
             const testToExec = testSuites[0].id;
             const projectKey = testSuites[0].projectKey;
+
             if (!projectKey) {
                 this.logger.error(`Could not determine project key for test ${testToExec}`);
                 return;
             }
-            // Execute ceedling test compilation
+
+            // trigger testsuite start event
+            this.testStatesEmitter.fire({
+                type: 'started',
+                tests: testSuites.map(test => test.id)
+            } as TestRunStartedEvent);
+	    // Execute ceedling test compilation
             const args = this.getTestCommandArgs(testToExec);
             const result = await this.execCeedling(args, projectKey);
             if (result.error && /ERROR: Ceedling Failed/.test(result.stdout)) {
                 this.logger.showError("Could not compile test, see test output for more details.");
+                // trigger failure event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'failed',
+                    message: result.stdout + '\n' + result.stderr
+                } as TestEvent);
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
                 return;
             }
             // Get executable extension
@@ -258,14 +289,78 @@ export class CeedlingAdapter implements TestAdapter {
             } else {
                 this.setDebugTestExecutable(`${testFileName}${ext}`);
             }
-            // Launch debugger
-            if (!await vscode.debug.startDebugging(this.workspaceFolder, this.projectData[projectKey].debugLaunchConfig)) {
+
+            // trigger testsuite start event
+            this.testStatesEmitter.fire({
+                type: 'suite',
+                suite: testSuites[0],
+                state: 'running'
+            } as TestSuiteEvent);
+
+            // trigger test start event
+            this.testStatesEmitter.fire({
+                type: 'test',
+                test: testToExec,
+                state: 'running'
+            } as TestEvent);
+
+            const debugSessionPromise = vscode.debug.startDebugging(
+                this.workspaceFolder,
+                this.projectData[projectKey].debugLaunchConfig
+            );
+
+            if (!await debugSessionPromise) {
                 this.logger.showError(`Debugger could not be started. Check your ceedlingExplorer.projects parameter in settings.`);
+                // trigger failure event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'failed',
+                    message: 'Debugger could not be started'
+                } as TestEvent);
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+            } else {
+                // wait for debug session to terminate
+                await new Promise<void>((resolve) => {
+                    const disposable = vscode.debug.onDidTerminateDebugSession((session) => {
+                        if (session.name === this.projectData[projectKey].debugLaunchConfig) {
+                            disposable.dispose();
+                            resolve();
+                        }
+                    });
+                });
+
+                // trigger testsuite completed event
+                this.testStatesEmitter.fire({
+                    type: 'suite',
+                    suite: testSuites[0],
+                    state: 'completed'
+                } as TestSuiteEvent);
+
+                // trigger test completed event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'passed'
+                } as TestEvent);
+
+                // trigger test run finished event
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
             }
-        }
-        finally {
+        } catch (error) {
+            this.logger.error(`Debug error: ${util.format(error)}`);
+            // trigger test run failed event
+            this.testStatesEmitter.fire({
+                type: 'test',
+                test: tests[0].replace(/::.*/, ''),
+                state: 'failed',
+                message: util.format(error)
+            } as TestEvent);
+            this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+        } finally {
             // Reset current test executable
             this.setDebugTestExecutable("");
+            this.isCanceled = false;
         }
     }
 
@@ -325,11 +420,16 @@ export class CeedlingAdapter implements TestAdapter {
                 tree_kill(this.ceedlingProcess.pid);
             }
         }
+        // trigger test run finished event
+        this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
     }
 
     dispose(): void {
         this.logger.trace(`dispose()`);
         this.cancel();
+        if (this.debugSessionDisposable) {
+            this.debugSessionDisposable.dispose();
+        }
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
@@ -1165,3 +1265,4 @@ export class CeedlingAdapter implements TestAdapter {
         this.testStatesEmitter.fire({ type: 'suite', suite: testSuite, state: 'completed' } as TestSuiteEvent);
     }
 }
+
