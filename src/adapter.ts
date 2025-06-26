@@ -1,29 +1,61 @@
-import child_process from 'child_process';
-import util from 'util';
 import { Mutex } from 'async-mutex';
-import tree_kill from 'tree-kill';
-import path from 'path';
+import child_process from 'child_process';
 import fs from 'fs';
 import yaml from 'js-yaml';
-import xml2js from 'xml2js';
-import vscode from 'vscode';
-import stripAnsi from 'strip-ansi';
+import path from 'path';
 import semver from 'semver';
+import stripAnsi from 'strip-ansi';
+import tree_kill from 'tree-kill';
+import util from 'util';
+import vscode from 'vscode';
 import {
     TestAdapter,
-    TestLoadStartedEvent,
-    TestLoadFinishedEvent,
-    TestRunStartedEvent,
-    TestRunFinishedEvent,
-    TestSuiteEvent,
     TestEvent,
-    TestSuiteInfo,
-    TestInfo
+    TestInfo,
+    TestLoadFinishedEvent,
+    TestLoadStartedEvent,
+    TestRunFinishedEvent,
+    TestRunStartedEvent,
+    TestSuiteEvent,
+    TestSuiteInfo
 } from 'vscode-test-adapter-api';
+import xml2js from 'xml2js';
+import { Logger } from './logger';
 import { ProblemMatcher, ProblemMatchingPattern } from './problemMatcher';
-import { Logger } from './logger'
+import deepmerge from 'deepmerge';
+
+type ProjectData = {
+    projectPath: string,
+    ymlFileName: any,
+    absPath: string,
+    debugLaunchConfig: string,
+    files: {
+        assembly?: string[],
+        header?: string[],
+        source?: string[],
+        test?: string[],
+    }
+}
+
+type ProjectConfig = {
+    path: string,
+    debugLaunchConfig: string,
+    name?: string,
+}
+
+interface ExtendedTestSuiteInfo extends TestSuiteInfo {
+    projectKey: string | undefined,
+    isProjectRoot: boolean
+}
+
+interface ExtendedTestInfo extends TestInfo {
+    projectKey: string
+}
 
 export class CeedlingAdapter implements TestAdapter {
+
+    private ceedlingVersionChecked = false;
+    private isOldCeedlingVersion = true;
     private disposables: { dispose(): void }[] = [];
 
     private readonly testsEmitter = new vscode.EventEmitter<TestLoadStartedEvent | TestLoadFinishedEvent>();
@@ -33,24 +65,35 @@ export class CeedlingAdapter implements TestAdapter {
     private readonly problemMatcher = new ProblemMatcher();
 
     private ceedlingProcess: child_process.ChildProcess | undefined;
-    private functionRegex: RegExp | undefined;
-    private fileLabelRegex: RegExp | undefined;
-    private testLabelRegex: RegExp | undefined;
     private debugTestExecutable: string = '';
-    private buildDirectory: string = '';
-    private reportFilename: string = '';
+
+    //mapped to the project path
+    private functionRegexps: Record<string, RegExp | undefined> = {};
+    private fileLabelRegexps: Record<string, RegExp | undefined> = {};
+    private testLabelRegexps: Record<string, RegExp | undefined> = {};
+    private buildDirectories: Record<string, string> = {};
+    private reportFilenames: Record<string, string> = {};
+
     private watchedFileForAutorunList: string[] = [];
     private watchedFileForReloadList: string[] = [];
-    private testSuiteInfo: TestSuiteInfo = {
+
+    private testSuiteInfo: ExtendedTestSuiteInfo = {
         type: 'suite',
         id: 'root',
         label: 'Ceedling',
+        isProjectRoot: false,
+        projectKey: undefined,
         children: []
     };
+
     private isCanceled: boolean = false;
     private isPrettyTestLabelEnable: boolean = false;
     private isPrettyTestFileLabelEnable: boolean = false;
     private ceedlingMutex: Mutex = new Mutex();
+
+    private projectData: Record<string, ProjectData> = {};
+
+    private debugSessionDisposable: vscode.Disposable | undefined;
 
     get tests(): vscode.Event<TestLoadStartedEvent | TestLoadFinishedEvent> {
         return this.testsEmitter.event;
@@ -72,6 +115,20 @@ export class CeedlingAdapter implements TestAdapter {
         this.disposables.push(this.testStatesEmitter);
         this.disposables.push(this.autorunEmitter);
         this.disposables.push(this.problemMatcher);
+
+        // Add debug session termination listener
+        this.debugSessionDisposable = vscode.debug.onDidTerminateDebugSession((session) => {
+            for (const projectKey in this.projectData) {
+                if (session.name === this.projectData[projectKey].debugLaunchConfig) {
+                    this.cancel(); // Terminate any running Ceedling processes
+                    // trigger finish event
+                    this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+                    break;
+                }
+            }
+        });
+        this.disposables.push(this.debugSessionDisposable);
+	
         // callback receive when a config property is modified
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration("ceedlingExplorer.problemMatching")) {
@@ -79,20 +136,52 @@ export class CeedlingAdapter implements TestAdapter {
                     this.problemMatcher.clear();
                 }
             }
-
+            let pathChanged = event.affectsConfiguration("ceedlingExplorer.projects");
             let affectedPrettyTestLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestLabel");
             let affectedPrettyTestFileLabel = event.affectsConfiguration("ceedlingExplorer.prettyTestFileLabel");
-            if (affectedPrettyTestLabel || affectedPrettyTestFileLabel) {
+            if (affectedPrettyTestLabel || affectedPrettyTestFileLabel || pathChanged) {
                 this.load();
             }
         })
     }
 
+    private async checkCeedlingVersion() {
+        try {
+            const version = await this.getCeedlingVersion();
+            this.logger.debug(`checkCeedlingVersion()=${version}`);
+            this.ceedlingVersionChecked = true;
+            if (semver.satisfies(version, "<0.31.2")) {
+                this.isOldCeedlingVersion = true;
+                return
+            }
+            this.isOldCeedlingVersion = false;
+        }
+        catch (e) {
+            this.logger.error(`Ceedling Version Check failed: ${util.format(e)}`);
+        }
+    }
+
     async load(): Promise<void> {
+        this.ceedlingVersionChecked = false;
         this.logger.trace(`load()`);
-
         this.testsEmitter.fire({ type: 'started' } as TestLoadStartedEvent);
-
+        await this.checkCeedlingVersion();
+        if (!this.ceedlingVersionChecked) {
+            return;
+        }
+        for (const projectKey of this.getProjectKeys()) {
+            const ymlProjectData = await this.getYmlProjectData(projectKey);
+            this.logger.debug(`load(projectKey=${projectKey}, ymlProjectData=${util.format(ymlProjectData)})`);
+            this.setBuildDirectory(projectKey, ymlProjectData);
+            this.setXmlReportPath(projectKey, ymlProjectData);
+            this.setFunctionRegex(projectKey, ymlProjectData);
+            this.setFileLabelRegex(projectKey, ymlProjectData);
+            this.setTestLabelRegex(projectKey, ymlProjectData);
+        }
+        const ymlPaths = [] as string[];
+        for (const projectKey of this.getProjectKeys()) {
+            ymlPaths.push(this.getYmlProjectPath(projectKey));
+        }
         const errorMessage = await this.sanityCheck();
         if (errorMessage) {
             this.logger.error(errorMessage);
@@ -102,62 +191,59 @@ export class CeedlingAdapter implements TestAdapter {
             } as TestLoadFinishedEvent);
             return;
         }
+        this.watchFilesForReload(ymlPaths);
+        let filetypes = ['test']
+        if (!this.isOldCeedlingVersion) {
+            filetypes = ['assembly', 'header', 'source', 'test']
 
-        const ymlProjectData = await this.getYmlProjectData();
-        this.setBuildDirectory(ymlProjectData);
-        this.setXmlReportPath(ymlProjectData);
-        this.setFunctionRegex(ymlProjectData);
-        this.setFileLabelRegex(ymlProjectData);
-        this.setTestLabelRegex(ymlProjectData);
-        this.watchFilesForReload([this.getYmlProjectPath()]);
-
-        const assemblyFiles = await this.getFileList('assembly');
-        const headerFiles = await this.getFileList('header');
-        const sourceFiles = await this.getFileList('source');
-        const testFiles = await this.getFileList('test');
-
-        this.watchFilesForAutorun(assemblyFiles);
-        this.watchFilesForAutorun(headerFiles);
-        this.watchFilesForAutorun(sourceFiles);
-
-        this.watchFilesForReload(testFiles);
-
-        await this.setTestSuiteInfo(testFiles);
+        }
+        for (const fileType of filetypes as (keyof ProjectData["files"])[]) {
+            this.logger.debug(`loadFileLists(fileType=${fileType})`);
+            await this.loadFileLists(fileType);
+            for (const projectKey in this.projectData) {
+                const files = this.projectData[projectKey].files[fileType];
+                if (files) this.watchFilesForAutorun(projectKey, files);
+            }
+        }
+        await this.setTestSuiteInfo();
         this.testsEmitter.fire({ type: 'finished', suite: this.testSuiteInfo } as TestLoadFinishedEvent);
     }
 
     async run(testIds: string[]): Promise<void> {
-        this.logger.trace(`run(testIds=${util.format(testIds)})`);
+        try {
+            this.logger.trace(`run(testIds=${util.format(testIds)})`);
 
-        // Ceedling always run the whole file and so run the top test suite
-        testIds = testIds.map((x) => x.replace(/::.*/, ''));
+            // Ceedling always run the whole file and so run the top test suite
+            testIds = testIds.map((x) => x.replace(/::.*/, ''));
 
-        const testSuites = this.getTestSuitesFromTestIds(testIds);
-        this.testStatesEmitter.fire({
-            type: 'started',
-            tests: testSuites.map((test) => {
-                return test.id;
-            })
-        } as TestRunStartedEvent);
-        this.isCanceled = false;
-        for (const testSuite of testSuites) {
-            await this.runTestSuite(testSuite);
-            if (this.isCanceled) {
-                break;
+            const testSuites = this.getTestSuitesFromTestIds(testIds);
+            this.logger.debug(`run(testSuites=${util.format(testSuites)})`);
+            this.testStatesEmitter.fire({
+                type: 'started',
+                tests: testSuites.map((test) => {
+                    return test.id;
+                })
+            } as TestRunStartedEvent);
+            this.isCanceled = false;
+            for (const testSuite of testSuites) {
+                await this.runTestSuite(testSuite);
+                if (this.isCanceled) {
+                    break;
+                }
             }
+            this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
         }
-        this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+        catch (e) {
+            this.logger.error(`run error=${util.format(e)}`);
+        }
+    }
+
+    getProjectKeyFromTest(testId: string): string {
+        return testId.split('::')[0];
     }
 
     async debug(tests: string[]): Promise<void> {
-        this.logger.trace(`debug(tests=${util.format(tests)})`);
         try {
-            // Get and validate debug configuration
-            const debugConfiguration = this.getConfiguration().get<string>('debugConfiguration', '');
-            if (!debugConfiguration) {
-                this.logger.showError("No debug configuration specified. In Settings, set ceedlingExplorer.debugConfiguration.");
-                return;
-            }
 
             // Ceedling always run the whole file and so run the top test suite
             tests = tests.map((x) => x.replace(/::.*/, ''));
@@ -165,36 +251,116 @@ export class CeedlingAdapter implements TestAdapter {
             // Determine test suite to run
             const testSuites = this.getTestSuitesFromTestIds(tests);
             const testToExec = testSuites[0].id;
+            const projectKey = testSuites[0].projectKey;
 
-            // Execute ceedling test compilation
-            const args = this.getTestCommandArgs(testToExec);
-            const result = await this.execCeedling(args);
-            if (result.error && /ERROR: Ceedling Failed/.test(result.stdout)) {
-                this.logger.showError("Could not compile test, see test output for more details.");
+            if (!projectKey) {
+                this.logger.error(`Could not determine project key for test ${testToExec}`);
                 return;
             }
 
+            // trigger testsuite start event
+            this.testStatesEmitter.fire({
+                type: 'started',
+                tests: testSuites.map(test => test.id)
+            } as TestRunStartedEvent);
+	    // Execute ceedling test compilation
+            const args = this.getTestCommandArgs(testToExec);
+            const result = await this.execCeedling(args, projectKey);
+            if (result.error && /ERROR: Ceedling Failed/.test(result.stdout)) {
+                this.logger.showError("Could not compile test, see test output for more details.");
+                // trigger failure event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'failed',
+                    message: result.stdout + '\n' + result.stderr
+                } as TestEvent);
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+                return;
+            }
             // Get executable extension
-            const ymlProjectData = await this.getYmlProjectData();
+            const ymlProjectData = await this.getYmlProjectData(projectKey);
             const ext = this.getExecutableExtension(ymlProjectData);
-
             // Get test executable file name without extension
             const testFileName = `${/([^/]*).c$/.exec(testToExec)![1]}`;
-
             // Set current test executable
-            const ceedlingVersion = await this.getCeedlingVersion();
-            if (this.detectTestSpecificDefines(ymlProjectData, testFileName) || semver.satisfies(ceedlingVersion, ">0.31.1"))
+            if (this.detectTestSpecificDefines(ymlProjectData, testFileName) || !this.isOldCeedlingVersion) {
                 this.setDebugTestExecutable(`${testFileName}/${testFileName}${ext}`);
-            else
+            } else {
                 this.setDebugTestExecutable(`${testFileName}${ext}`);
+            }
 
-            // Launch debugger
-            if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
-                this.logger.showError("Debugger could not be started.");
-        }
-        finally {
+            // trigger testsuite start event
+            this.testStatesEmitter.fire({
+                type: 'suite',
+                suite: testSuites[0],
+                state: 'running'
+            } as TestSuiteEvent);
+
+            // trigger test start event
+            this.testStatesEmitter.fire({
+                type: 'test',
+                test: testToExec,
+                state: 'running'
+            } as TestEvent);
+
+            const debugSessionPromise = vscode.debug.startDebugging(
+                this.workspaceFolder,
+                this.projectData[projectKey].debugLaunchConfig
+            );
+
+            if (!await debugSessionPromise) {
+                this.logger.showError(`Debugger could not be started. Check your ceedlingExplorer.projects parameter in settings.`);
+                // trigger failure event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'failed',
+                    message: 'Debugger could not be started'
+                } as TestEvent);
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+            } else {
+                // wait for debug session to terminate
+                await new Promise<void>((resolve) => {
+                    const disposable = vscode.debug.onDidTerminateDebugSession((session) => {
+                        if (session.name === this.projectData[projectKey].debugLaunchConfig) {
+                            disposable.dispose();
+                            resolve();
+                        }
+                    });
+                });
+
+                // trigger testsuite completed event
+                this.testStatesEmitter.fire({
+                    type: 'suite',
+                    suite: testSuites[0],
+                    state: 'completed'
+                } as TestSuiteEvent);
+
+                // trigger test completed event
+                this.testStatesEmitter.fire({
+                    type: 'test',
+                    test: testToExec,
+                    state: 'passed'
+                } as TestEvent);
+
+                // trigger test run finished event
+                this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+            }
+        } catch (error) {
+            this.logger.error(`Debug error: ${util.format(error)}`);
+            // trigger test run failed event
+            this.testStatesEmitter.fire({
+                type: 'test',
+                test: tests[0].replace(/::.*/, ''),
+                state: 'failed',
+                message: util.format(error)
+            } as TestEvent);
+            this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
+        } finally {
             // Reset current test executable
             this.setDebugTestExecutable("");
+            this.isCanceled = false;
         }
     }
 
@@ -218,11 +384,10 @@ export class CeedlingAdapter implements TestAdapter {
                 token.onCancellationRequested(() => {
                     this.cancel();
                 });
-
-                return this.execCeedling(["clean"]);
+                return this.execCeedlingAllProjects(["clean"]);
             }
         );
-        if (result.error) {
+        if ((result as any[]).some((x) => x.error)) {
             this.logger.showError("Ceedling clean failed");
         }
     }
@@ -239,11 +404,11 @@ export class CeedlingAdapter implements TestAdapter {
                     this.cancel();
                 });
 
-                return this.execCeedling(["clobber"]);
+                return this.execCeedlingAllProjects(["clobber"]);
             }
         );
-        if (result.error) {
-            this.logger.showError("Ceedling clobber failed");
+        if ((result as any[]).some((x) => x.error)) {
+            this.logger.showError("Ceedling clean failed");
         }
     }
 
@@ -255,43 +420,71 @@ export class CeedlingAdapter implements TestAdapter {
                 tree_kill(this.ceedlingProcess.pid);
             }
         }
+        // trigger test run finished event
+        this.testStatesEmitter.fire({ type: 'finished' } as TestRunFinishedEvent);
     }
 
     dispose(): void {
         this.logger.trace(`dispose()`);
         this.cancel();
+        if (this.debugSessionDisposable) {
+            this.debugSessionDisposable.dispose();
+        }
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
         this.disposables = [];
+        // Clear file watches
+        for (const file of this.watchedFileForAutorunList) {
+            fs.unwatchFile(file);
+        }
+        for (const file of this.watchedFileForReloadList) {
+            fs.unwatchFile(file);
+        }
     }
 
     private async sanityCheck(): Promise<string | void> {
+        const sanityCheckErrors = [] as string[];
         const release = await this.ceedlingMutex.acquire();
         try {
             const result = await this.execCeedling([`summary`]);
             if (result.error) {
                 return `Ceedling failed to run in the configured shell. ` +
+                    'Please check if you can run `ceedling summary` in your shell.\n' +
                     `Please check the ceedlingExplorer.shellPath option.\n` +
                     `${result.stdout}\n${result.stderr}`
             }
         } finally {
             release();
         }
-        const ymlProjectData = await this.getYmlProjectData();
+        for (const key of this.getProjectKeys()) {
+            const error = await this.checkYmlProjectData(key);
+            if (error) {
+                sanityCheckErrors.push(error);
+            }
+        }
+        if (sanityCheckErrors.length > 0) {
+            return sanityCheckErrors.join('\n');
+        }
+    }
+
+    private async checkYmlProjectData(projectKey: string): Promise<string | void> {
+        const ymlProjectData = await this.getYmlProjectData(projectKey)
         if (!ymlProjectData) {
-            return `Failed to find the project.yml file. ` +
+            return `Failed to find or load the project.yml file for ${projectKey}. ` +
                 `Please check the ceedlingExplorer.projectPath option.`;
         }
-        try {
-            if (!ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report')) {
-                throw 'Xml report plugin not enabled';
+        if (!this.isOldCeedlingVersion) {
+            try {
+                if (!ymlProjectData[':plugins'][':enabled'].includes('report_tests_log_factory')) {
+                    throw 'Report tests log factory plugin not enabled';
+                }
+            } catch (e) {
+                return `The required Ceedling plugin 'report_tests_log_factory' is not enabled. ` +
+                    `You have to edit ${this.getYmlProjectPath(projectKey)} file to enable the plugin.\n` +
+                    `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
+                    `#tool-element-runtime-substitution-notational-substitution`;
             }
-        } catch (e) {
-            return `The required Ceedling plugin 'xml_tests_report' is not enabled. ` +
-                `You have to edit your 'project.xml' file to enable the plugin.\n` +
-                `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
-                `#tool-element-runtime-substitution-notational-substitution`;
         }
     }
 
@@ -304,27 +497,87 @@ export class CeedlingAdapter implements TestAdapter {
         return shellPath !== "null" ? shellPath : undefined;
     }
 
-    private getProjectPath(): string {
-        const defaultProjectPath = '.';
-        const projectPath = this.getConfiguration().get<string>('projectPath', defaultProjectPath);
-        let workspacePath = this.workspaceFolder.uri.fsPath;
-        // Workaround: Uppercase disk letters are required on windows to be able to generate xml gcov reports
-        if (process.platform == 'win32') {
-            workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
+    private getProjectKeys(): string[] {
+        if (Object.keys(this.projectData).length == 0) {
+            this.loadProjectPaths();
         }
-        const absolutePath = path.resolve(workspacePath, projectPath);
-        if (!(fs.existsSync(absolutePath) && fs.lstatSync(absolutePath).isDirectory())) {
-            // TODO: We are silently using the default project path. The user should be warned
-            return path.resolve(workspacePath, defaultProjectPath);
-        }
-        return absolutePath;
+        return Object.keys(this.projectData);
     }
 
-    private async getFileList(fileType: string): Promise<string[]> {
+    private loadProjectPaths() {
+        const projectConfigs = this.getConfiguration().get<object>('projects', []) as Array<ProjectConfig>;
+        this.projectData = {};
+        let workspacePath = this.workspaceFolder.uri.fsPath;
+        projectConfigs.forEach(projectConfig => {
+            let ymlName = 'project.yml';
+            let key = projectConfig.path;
+            if (projectConfig.path.endsWith('.yml')) {
+                const split = projectConfig.path.split('/');
+                ymlName = split[split.length - 1];
+                if (ymlName != 'project.yml') {
+                    key = ymlName.replace('.yml', '');
+                }
+                projectConfig.path = projectConfig.path.replace(ymlName, '');
+                if (projectConfig.path == '') {
+                    projectConfig.path = '.';
+                }
+            }
+            if (projectConfig.name) {
+                key = projectConfig.name;
+            }
+            // Workaround: Uppercase disk letters are required on windows to be able to generate xml gcov reports
+            if (process.platform == 'win32') {
+                workspacePath = workspacePath.charAt(0).toUpperCase() + workspacePath.slice(1);
+            }
+            const absolutePath = path.resolve(workspacePath, projectConfig.path);
+            if (!(fs.existsSync(absolutePath) && fs.lstatSync(absolutePath).isDirectory())) {
+                throw `The project path ${absolutePath} does not exist or is not a directory.`;
+            } else {
+                this.projectData[key] = {
+                    debugLaunchConfig: projectConfig.debugLaunchConfig,
+                    projectPath: projectConfig.path,
+                    ymlFileName: ymlName,
+                    absPath: absolutePath,
+                    files: {}
+                };
+            }
+        });
+        if (Object.keys(this.projectData).length == 0) {
+            this.projectData['default'] = {
+                debugLaunchConfig: 'ceedling',
+                projectPath: ".",
+                ymlFileName: 'project.yml',
+                absPath: path.resolve(workspacePath, "."),
+                files: {}
+            };
+        }
+    }
+
+    private async loadFileLists(fileType: keyof ProjectData["files"]): Promise<void> {
+        for (const projectKey of this.getProjectKeys()) {
+            if (!this.projectData[projectKey].files) {
+                this.projectData[projectKey].files = {} as Record<string, string[]>;
+            }
+            this.logger.debug(`getFileList(fileType=${fileType}, projectKey=${projectKey})`);
+            const files = await this.getFileListFromProject(fileType, projectKey);
+            this.logger.debug(`gotten ${files.length} ${fileType} files`);
+            if (files) {
+                this.logger.debug(`adding ${fileType} files to project data`);
+                try {
+                    this.projectData[projectKey].files[fileType] = files;
+                } catch (e) {
+                    this.logger.error(`Failed to load ${fileType} files: ${util.format(e)}`);
+                }
+            }
+        };
+    }
+
+    private async getFileListFromProject(fileType: string, projectKey: string): Promise<string[]> {
         const release = await this.ceedlingMutex.acquire();
         try {
-            const result = await this.execCeedling([`files:${fileType}`]);
+            const result = await this.execCeedling([`files:${fileType}`], projectKey);
             if (result.error) {
+                this.logger.error(`Failed to get the list of ${fileType} files: ${util.format(result)}`);
                 return [];
             } else {
                 return result.stdout.split('\n').filter((value: string) => {
@@ -388,7 +641,7 @@ export class CeedlingAdapter implements TestAdapter {
 
     private async getCeedlingVersion(): Promise<string> {
         const result = await this.execCeedling(['version']);
-        const regex = new RegExp('^\\s*Ceedling::\\s*(.*)$', 'gm');
+        const regex = new RegExp('^\\s*Ceedling\\s*(?:::|=>)\\s*(.*)(?:\\n)*$', 'gm');
         const match = regex.exec(result.stdout);
         if (!match) {
             this.logger.error(`fail to get the ceedling version: ${util.format(result)}`);
@@ -397,11 +650,33 @@ export class CeedlingAdapter implements TestAdapter {
         return match[1];
     }
 
-    private execCeedling(args: ReadonlyArray<string>): Promise<any> {
-        this.logger.trace(`execCeedling(args=${util.format(args)})`);
-        const command = this.getCeedlingCommand(args);
-        const cwd = this.getProjectPath();
+    private execCeedlingAllProjects(args: ReadonlyArray<string>): Promise<any>[] {
+        const promises = []
+        for (const projectKey of this.getProjectKeys()) {
+            promises.push(this.execCeedling(args, projectKey));
+        }
+        return promises;
+    }
+
+    private execCeedling(args: ReadonlyArray<string>, projectKey = Object.keys(this.projectData)[0]): Promise<any> {
+        let cwd = ".";
+        if (this.ceedlingVersionChecked && projectKey in this.projectData) {
+            if (!this.isOldCeedlingVersion) {
+                let projectParam = ` --project project.yml`;
+                if (this.projectData[projectKey].ymlFileName != 'project.yml') {
+                    projectParam += ` --mixin ${this.projectData[projectKey].ymlFileName}`;
+                }
+                args = [...args, projectParam];
+            } else {
+                const project = this.projectData[projectKey].ymlFileName.substr(0, this.projectData[projectKey].ymlFileName.lastIndexOf('.'));
+                let projectParam = ` project:${project} `;
+                args = [...args, projectParam];
+            }
+            cwd = this.projectData[projectKey].absPath;
+        }
+        let command = this.getCeedlingCommand(args);
         const shell = this.getShellPath();
+        this.logger.debug(`execCeedling(args=${util.format(args)}) \ncommand=${command} \ncwd=${cwd} \nshell=${shell}`);
         return new Promise<any>((resolve) => {
             this.ceedlingProcess = child_process.exec(
                 command, { cwd: cwd, shell: shell },
@@ -412,23 +687,18 @@ export class CeedlingAdapter implements TestAdapter {
                         stdout = stripAnsi(stdout);
                         stderr = stripAnsi(stderr);
                     }
-                    this.logger.debug(`exec(command=${util.format(command)}, ` +
-                        `cwd=${util.format(cwd)}, ` +
-                        `shell=${util.format(shell)}, ` +
-                        `error=${util.format(error)}, ` +
-                        `stdout=${util.format(stdout)}, ` +
-                        `stderr=${util.format(stderr)})`);
+                    this.logger.debug(`exec done`);
                     resolve({ error, stdout, stderr });
                 },
             )
         })
     }
 
-    private watchFilesForAutorun(files: string[]): void {
+    private watchFilesForAutorun(projectKey: string, files: string[]): void {
         for (const file of files) {
             if (!this.watchedFileForAutorunList.includes(file)) {
                 this.watchedFileForAutorunList.push(file);
-                const fullPath = path.resolve(this.getProjectPath(), file);
+                const fullPath = path.resolve(this.projectData[projectKey].projectPath, file);
                 fs.watchFile(fullPath, () => {
                     this.autorunEmitter.fire();
                 });
@@ -437,18 +707,22 @@ export class CeedlingAdapter implements TestAdapter {
     }
 
     private watchFilesForReload(files: string[]): void {
-        for (const file of files) {
-            if (!this.watchedFileForReloadList.includes(file)) {
-                this.watchedFileForReloadList.push(file);
-                const fullPath = path.resolve(this.getProjectPath(), file);
-                fs.watchFile(fullPath, () => {
-                    this.load();
-                });
+        try {
+            for (const file of files) {
+                if (!this.watchedFileForReloadList.includes(file)) {
+                    this.watchedFileForReloadList.push(file);
+                    fs.watchFile(file, () => {
+                        this.load();
+                    });
+                }
             }
+        }
+        catch (e) {
+            this.logger.error(`watchFilesForReload()=${util.format(e)}`);
         }
     }
 
-    private setFunctionRegex(ymlProjectData: any = undefined) {
+    private setFunctionRegex(projectKey: string, ymlProjectData: any = undefined) {
         let testPrefix = 'test|spec|should';
         if (ymlProjectData) {
             try {
@@ -459,13 +733,13 @@ export class CeedlingAdapter implements TestAdapter {
             } catch (e) { }
         }
         const macroAliases = [...this.getTestCaseMacroAliases(), ...this.getTestRangeMacroAliases()].join('|');
-        this.functionRegex = new RegExp(
+        this.functionRegexps[projectKey] = new RegExp(
             `^((?:\\s*(?:${macroAliases})\\s*\\(.*?\\)\\s*)*)\\s*void\\s+((?:${testPrefix})(?:.*\\\\\\s+)*.*)\\s*\\(\\s*(.*)\\s*\\)`,
             'gm'
         );
     }
 
-    private setBuildDirectory(ymlProjectData: any = undefined) {
+    private setBuildDirectory(projectKey: string, ymlProjectData: any = undefined) {
         let buildDirectory = 'build';
         if (ymlProjectData) {
             try {
@@ -475,30 +749,43 @@ export class CeedlingAdapter implements TestAdapter {
                 }
             } catch (e) { }
         }
-        this.buildDirectory = buildDirectory;
+        this.buildDirectories[projectKey] = buildDirectory;
     }
 
-    private setXmlReportPath(ymlProjectData: any = undefined) {
+    private setXmlReportPath(projectKey: string, ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
-        if (ymlProjectData) {
-            try {
-                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
-                if (ymlProjectReportFilename != undefined) {
-                    reportFilename = ymlProjectReportFilename;
-                }
-            } catch (e) { }
+        if (this.isOldCeedlingVersion) {
+            if (ymlProjectData) {
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) { }
+            }
+        } else {
+            reportFilename = 'cppunit_tests_report.xml';
+
+            if (ymlProjectData) {
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':report_tests_log_factory'][':cppunit'][':filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) { }
+            }
         }
-        this.reportFilename = reportFilename;
+        this.reportFilenames[projectKey] = reportFilename;
     }
 
-    private getTestFunctionRegex(): RegExp {
-        if (!this.functionRegex) {
-            this.setFunctionRegex();
+    private getTestFunctionRegex(projectKey: string,): RegExp {
+        if (!this.functionRegexps) {
+            this.setFunctionRegex(this.projectData[projectKey].projectPath);
         }
-        return this.functionRegex as RegExp;
+        return this.functionRegexps[projectKey] as RegExp;
     }
 
-    private setFileLabelRegex(ymlProjectData: any = undefined) {
+    private setFileLabelRegex(projectKey: string, ymlProjectData: any = undefined) {
         let filePrefix = 'test_';
         if (ymlProjectData) {
             try {
@@ -508,17 +795,17 @@ export class CeedlingAdapter implements TestAdapter {
                 }
             } catch (e) { }
         }
-        this.fileLabelRegex = new RegExp(`.*\/${filePrefix}(.*).c`, 'i');
+        this.fileLabelRegexps[projectKey] = new RegExp(`.*\/${filePrefix}(.*).c`, 'i');
     }
 
-    private getFileLabelRegex(): RegExp {
-        if (!this.fileLabelRegex) {
-            this.setFileLabelRegex();
+    private getFileLabelRegex(projectKey: string,): RegExp {
+        if (!this.fileLabelRegexps[projectKey]) {
+            this.setFileLabelRegex(projectKey);
         }
-        return this.fileLabelRegex as RegExp;
+        return this.fileLabelRegexps[projectKey] as RegExp;
     }
 
-    private setTestLabelRegex(ymlProjectData: any = undefined) {
+    private setTestLabelRegex(projectKey: string, ymlProjectData: any = undefined) {
         let testPrefix = 'test|spec|should';
         if (ymlProjectData) {
             try {
@@ -528,20 +815,20 @@ export class CeedlingAdapter implements TestAdapter {
                 }
             } catch (e) { }
         }
-        this.testLabelRegex = new RegExp(`(?:${testPrefix})_*(.*)`);
+        this.testLabelRegexps[projectKey] = new RegExp(`(?:${testPrefix})_*(.*)`);
     }
 
-    private getTestLabelRegex(): RegExp {
-        if (!this.testLabelRegex) {
-            this.setTestLabelRegex();
+    private getTestLabelRegex(projectKey: string): RegExp {
+        if (!this.testLabelRegexps[projectKey]) {
+            this.setTestLabelRegex(projectKey);
         }
-        return this.testLabelRegex as RegExp;
+        return this.testLabelRegexps[projectKey] as RegExp;
     }
 
-    private setTestLabel(testName: string): string {
+    private setTestLabel(projectKey: string, testName: string): string {
         let testLabel = testName;
         if (this.isPrettyTestLabelEnable) {
-            const labelFunctionRegex = this.getTestLabelRegex();
+            const labelFunctionRegex = this.getTestLabelRegex(projectKey);
             let testLabelMatches = labelFunctionRegex.exec(testName);
             if (testLabelMatches != null) {
                 testLabel = testLabelMatches[1];
@@ -550,10 +837,10 @@ export class CeedlingAdapter implements TestAdapter {
         return testLabel;
     }
 
-    private setFileLabel(fileName: string): string {
+    private setFileLabel(projectKey: string, fileName: string): string {
         let fileLabel = fileName;
         if (this.isPrettyTestFileLabelEnable) {
-            const labelFileRegex = this.getFileLabelRegex();
+            const labelFileRegex = this.getFileLabelRegex(projectKey);
             let labelMatches = labelFileRegex.exec(fileName);
             if (labelMatches != null) {
                 fileLabel = labelMatches[1];
@@ -585,71 +872,107 @@ export class CeedlingAdapter implements TestAdapter {
         return functionName.replace(/\\\s*/g, '');
     }
 
-    private setTestSuiteInfo(files: string[]) {
+    private setTestSuiteInfo() {
         this.testSuiteInfo = {
             type: 'suite',
             id: 'root',
             label: 'Ceedling',
-            children: []
-        } as TestSuiteInfo;
-
-        this.problemMatcher.setActualIds(files);
-
+            isProjectRoot: false,
+            projectKey: undefined,
+            children: [],
+        } as ExtendedTestSuiteInfo;
         /* get labels configuration */
-        this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
-        this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
+        try {
+            this.isPrettyTestFileLabelEnable = this.getConfiguration().get<boolean>('prettyTestFileLabel', false);
+            this.isPrettyTestLabelEnable = this.getConfiguration().get<boolean>('prettyTestLabel', false);
+            if (this.getProjectKeys().length == 1) {
+                const files = this.projectData[this.getProjectKeys()[0]].files['test'];
+                if (files) {
+                    this.problemMatcher.setActualIds(files);
+                    this.testSuiteInfo.children = Array.from(this.getTestSuiteChildren(this.getProjectKeys()[0], files))
+                }
+            }
+            else {
+                for (const projectKey of this.getProjectKeys()) {
+                    const files = this.projectData[projectKey].files['test'];
+                    if (files) {
+                        const projectTestSuiteInfo: ExtendedTestSuiteInfo = {
+                            type: 'suite',
+                            id: projectKey,
+                            label: projectKey,
+                            children: Array.from(this.getTestSuiteChildren(projectKey, files)),
+                            projectKey: projectKey,
+                            isProjectRoot: true
+                        };
+                        this.testSuiteInfo.children.push(projectTestSuiteInfo);
+                    }
+                }
+            }
+        }
+        catch (e) {
+            this.logger.error(`setTestSuiteInfo()=${util.format(e)}`);
+        }
+    }
 
+    private * getTestSuiteChildren(projectKey: string, files: string[]): Iterable<ExtendedTestSuiteInfo> {
         for (const file of files) {
-            const fullPath = path.resolve(this.getProjectPath(), file);
-            const fileLabel = this.setFileLabel(file);
-            const currentTestSuitInfo: TestSuiteInfo = {
+            const projectPath = this.projectData[projectKey].absPath;
+            const fullPath = path.resolve(projectPath, file);
+            const fileLabel = this.setFileLabel(projectKey, file);
+            const currentTestSuiteInfo: ExtendedTestSuiteInfo = {
                 type: 'suite',
                 id: file,
                 label: fileLabel,
                 file: fullPath,
-                children: []
+                children: [],
+                projectKey: projectKey,
+                isProjectRoot: false
             };
-            const testRegex = this.getTestFunctionRegex();
+            const testRegex = this.getTestFunctionRegex(projectKey);
             const fileText = fs.readFileSync(fullPath, 'utf8');
             let match = testRegex.exec(fileText);
             while (match != null) {
                 const testCases = this.parseParametrizedTestCases(match[1]);
                 const testName = this.parseMultilineFunctionName(match[2]);
-                const testLabel = this.setTestLabel(testName);
+                const testLabel = this.setTestLabel(projectKey, testName);
                 let line = fileText.substr(0, match.index).split('\n').length - 1;
                 line = line + match[0].substr(0, match[0].search(/\S/g)).split('\n').length - 1;
                 if (testCases.length > 0) {
-                    const testSuiteInfo: TestSuiteInfo = {
+                    const testSuiteInfo: ExtendedTestSuiteInfo = {
                         type: 'suite',
                         id: `${file}::${testName}`,
                         label: testLabel,
                         file: fullPath,
-                        children: []
+                        children: [],
+                        projectKey: projectKey,
+                        isProjectRoot: false
                     };
                     for (const testCase of testCases) {
-                        const testInfo: TestInfo = {
+                        const testInfo: ExtendedTestInfo = {
                             type: 'test',
                             id: `${file}::${testName}(${testCase.args})`,
                             label: testCase.args,
                             file: fullPath,
-                            line: line + testCase.line
+                            line: line + testCase.line,
+                            projectKey: projectKey
                         };
                         testSuiteInfo.children.push(testInfo);
                     }
-                    currentTestSuitInfo.children.push(testSuiteInfo)
+                    currentTestSuiteInfo.children.push(testSuiteInfo)
                 } else {
-                    const testInfo: TestInfo = {
+                    const testInfo: ExtendedTestInfo = {
                         type: 'test',
                         id: `${file}::${testName}`,
                         label: testLabel,
                         file: fullPath,
-                        line: line
+                        line: line,
+                        projectKey: projectKey
                     };
-                    currentTestSuitInfo.children.push(testInfo);
+                    currentTestSuiteInfo.children.push(testInfo);
                 }
                 match = testRegex.exec(fileText);
             }
-            this.testSuiteInfo.children.push(currentTestSuitInfo);
+            yield currentTestSuiteInfo;
         }
     }
 
@@ -689,13 +1012,13 @@ export class CeedlingAdapter implements TestAdapter {
         return this.recursiveFindParent(this.testSuiteInfo, this.testSuiteInfo, testId);
     }
 
-    private getTestSuitesFromTestIds(testIds: string[]): TestSuiteInfo[] {
+    private getTestSuitesFromTestIds(testIds: string[]): ExtendedTestSuiteInfo[] {
         /* Get tests from ids */
         const tests = testIds.map((testId) => {
             return this.findTest(testId);
         }).filter((testInfo) => {
             return testInfo !== undefined;
-        }) as (TestSuiteInfo | TestInfo)[];
+        }) as (ExtendedTestSuiteInfo | ExtendedTestInfo)[];
         /* Get parent suites */
         const suites = tests.map((test) => {
             if (test.type === 'test') {
@@ -703,7 +1026,7 @@ export class CeedlingAdapter implements TestAdapter {
                 if (parent === undefined) {
                     throw `Failed to find parent of the test '${test.id}'`
                 }
-                return parent as TestSuiteInfo;
+                return parent as ExtendedTestSuiteInfo;
             }
             return test;
         });
@@ -711,7 +1034,7 @@ export class CeedlingAdapter implements TestAdapter {
         let fixedSuite: typeof suites = [];
         for (const suite of suites) {
             if (suite.id === 'root') {
-                const children = suite.children as TestSuiteInfo[];
+                const children = suite.children as ExtendedTestSuiteInfo[];
                 fixedSuite.push(...children);
             } else {
                 fixedSuite.push(suite);
@@ -721,59 +1044,115 @@ export class CeedlingAdapter implements TestAdapter {
         return [...new Set(fixedSuite)];
     }
 
-    private getYmlProjectPath(): string {
+    private getYmlProjectPath(projectKey: string): string {
         return path.resolve(
-            this.getProjectPath(),
-            'project.yml'
+            this.projectData[projectKey].absPath,
+            this.projectData[projectKey].ymlFileName
         );
     }
 
-    private getYmlProjectData(): Promise<any | undefined> {
+    private getYmlProjectData(projectKey: string): Promise<any | undefined> {
+        try {
+            if (this.projectData[projectKey].ymlFileName != 'project.yml') {
+                return this.mergeYmlProjectData(projectKey);
+            }
+            return new Promise<any | undefined>((resolve) => {
+                const project_yml = this.getYmlProjectPath(projectKey);
+                fs.readFile(project_yml, 'utf8', (error, data) => {
+                    if (error) {
+                        this.logger.error(`Failed to read YAML file '${project_yml}': ${util.format(error)}`);
+                        resolve(undefined);
+                    }
+                    try {
+                        const result = yaml.safeLoad(data);
+                        resolve(result);
+                    } catch (e) {
+                        this.logger.error(`Failed to parse YAML file '${project_yml}': ${util.format(e)}`);
+                        resolve(undefined);
+                    }
+                });
+            });
+        }
+        catch (e) {
+            this.logger.error(`getYmlProjectData()=${util.format(e)}`);
+        }
+        return Promise.resolve(undefined);
+    }
+
+    private mergeYmlProjectData(projectKey: string): Promise<any | undefined> {
         return new Promise<any | undefined>((resolve) => {
-            fs.readFile(this.getYmlProjectPath(), 'utf8', (error, data) => {
+            const project_data = this.getYmlProjectPath(projectKey);
+            fs.readFile(project_data, 'utf8', (error, data) => {
                 if (error) {
+                    this.logger.error(`Failed to read YAML file: ${util.format(error)}`);
                     resolve(undefined);
                 }
                 try {
                     const result = yaml.safeLoad(data);
-                    resolve(result);
+                    const defaultYmlPath = path.resolve(this.projectData[projectKey].absPath, 'project.yml');
+                    fs.readFile(defaultYmlPath, 'utf8', (error, data) => {
+                        if (error) {
+                            this.logger.error(`Failed to read default YAML file: ${util.format(error)}`);
+                            resolve(result);
+                        }
+                        try {
+                            const defaultResult = yaml.safeLoad(data) || {};
+                            const mergedResult = deepmerge(defaultResult, result || {});
+                            resolve(mergedResult);
+                        } catch (e) {
+                            this.logger.error(`Failed to parse default YAML file: ${util.format(e)}`);
+                            resolve(result);
+                        }
+                    });
                 } catch (e) {
+                    this.logger.error(`Failed to parse YAML file: ${util.format(e)}`);
                     resolve(undefined);
                 }
             });
         });
     }
 
-    private getXmlReportPath(): string {
+    private getXmlReportPath(projectKey: string): string {
         // Return the latest updated file between artifacts/test/report.xml and artifacts/gcov/report.xml
         // The report is generated in one of these directories based on the command used: ceedling test:* or gcov:*
         const paths: Array<[string, Date]> = ['test', 'gcov']
             .map((x) => path.resolve(
-                this.getProjectPath(),
-                this.buildDirectory, 'artifacts', x, this.reportFilename
+                this.projectData[projectKey].absPath,
+                this.buildDirectories[projectKey], 'artifacts', x, this.reportFilenames[projectKey]
             ))
             .map((x) => [x, fs.existsSync(x) ? fs.statSync(x).mtime : new Date(0)]);
         paths.sort((lhs, rhs) => (rhs[1].getTime() - lhs[1].getTime()));
+        this.logger.debug(`getXmlReportPath()=${paths}`);
         return paths[0][0];
     }
 
-    private deleteXmlReport(): Promise<void> {
+    private deleteXmlReport(projectKey: string): Promise<void> {
         return new Promise<void>((resolve) => {
-            fs.unlink(this.getXmlReportPath(), () => {
+            const xmlReportPath = this.getXmlReportPath(projectKey);
+            if (fs.existsSync(xmlReportPath)) {
+                fs.unlink(xmlReportPath, (error) => {
+                    if (error) {
+                        this.logger.error(`Failed to delete XML report: ${util.format(error)}`);
+                    }
+                    resolve();
+                });
+            } else {
                 resolve();
-            });
+            }
         });
     }
 
-    private getXmlReportData(): Promise<any | undefined> {
+    private getXmlReportData(projectKey: string): Promise<any | undefined> {
         const parser = new xml2js.Parser({ explicitArray: false });
         return new Promise<void>((resolve) => {
-            fs.readFile(this.getXmlReportPath(), 'utf8', (error, data) => {
+            fs.readFile(this.getXmlReportPath(projectKey), 'utf8', (error, data) => {
                 if (error) {
+                    this.logger.error(`Failed to read XML report: ${util.format(error)}`);
                     resolve(undefined);
                 }
                 parser.parseString(data, (error: any, result: any) => {
                     if (error) {
+                        this.logger.error(`Failed to parse XML report: ${util.format(error)}`);
                         resolve(undefined);
                     }
                     resolve(result);
@@ -811,7 +1190,11 @@ export class CeedlingAdapter implements TestAdapter {
         return ret;
     }
 
-    private async runTestSuite(testSuite: TestSuiteInfo): Promise<void> {
+    private async runTestSuite(testSuite: ExtendedTestSuiteInfo): Promise<void> {
+        if (!testSuite.projectKey) {
+            this.logger.error(`Could not determine project key for test suite ${testSuite.id}`);
+            return;
+        }
         this.testStatesEmitter.fire({ type: 'suite', suite: testSuite, state: 'running' } as TestSuiteEvent);
         const release = await this.ceedlingMutex.acquire();
         try {
@@ -819,17 +1202,27 @@ export class CeedlingAdapter implements TestAdapter {
                 this.testStatesEmitter.fire({ type: child.type, test: child, state: 'running' } as TestEvent);
             }
             /* Delete the xml report from the artifacts */
-            await this.deleteXmlReport();
+            await this.deleteXmlReport(testSuite.projectKey);
             /* Run the test and get stdout */
-            const args = this.getTestCommandArgs(testSuite.id);
-            const result = await this.execCeedling(args);
-            const message: string = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
+            let result = undefined;
+            let message = "";
+            if (testSuite.isProjectRoot) {
+                const args = this.getTestCommandArgs('all');
+                result = await this.execCeedling(args, testSuite.projectKey);
+                message = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
+            }
+            else {
+                const args = this.getTestCommandArgs(testSuite.id);
+                result = await this.execCeedling(args, testSuite.projectKey);
+                message = `stdout:\n${result.stdout}` + ((result.stderr.length != 0) ? `\nstderr:\n${result.stderr}` : ``);
+            }
 
-            this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.getProjectPath(),
+            this.problemMatcher.scan(testSuite.id, result.stdout, result.stderr, this.projectData[testSuite.projectKey].projectPath,
                 this.getConfiguration().get<string>('problemMatching.mode', ""),
                 this.getConfiguration().get<ProblemMatchingPattern[]>('problemMatching.patterns', []));
 
-            const xmlReportData = await this.getXmlReportData();
+            const xmlReportData = await this.getXmlReportData(testSuite.projectKey);
+            this.logger.debug(`xmlReportData=${util.format(xmlReportData)}`);
             if (xmlReportData === undefined) {
                 /* The tests are not run so return error */
                 for (const child of this.testInfoDfs(testSuite)) {

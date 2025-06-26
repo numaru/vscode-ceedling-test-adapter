@@ -1,13 +1,19 @@
 {
-  "name": "vscode-ceedling-test-adapter",
+  "name": "vscode-ceedling-test-adapter-multi",
   "displayName": "Ceedling Test Explorer",
   "description": "Run your Ceedling tests in the Sidebar of Visual Studio Code",
   "icon": "img/icon.png",
   "author": {
     "name": "Kin Numaru"
   },
-  "publisher": "numaru",
-  "version": "1.12.0",
+  "contributors": [
+    {
+      "name": "Simeon Schmachtenberg",
+      "email": "simeon.schmachtenberg@futavis.de"
+    }
+  ],
+  "publisher": "futavis",
+  "version": "2.0.0",
   "license": "MIT",
   "homepage": "https://github.com/numaru/vscode-ceedling-test-adapter",
   "repository": {
@@ -42,6 +48,7 @@
     "@types/semver": "^7.5.4",
     "@types/xml2js": "^0.4.3",
     "async-mutex": "^0.1.3",
+    "deepmerge": "^4.3.1",
     "js-yaml": "^3.13.1",
     "semver": "^7.5.4",
     "strip-ansi": "^6.0.0",
@@ -76,21 +83,43 @@
       "type": "object",
       "title": "Ceedling Test Explorer configuration",
       "properties": {
-        "ceedlingExplorer.projectPath": {
-          "description": "Path to the Ceedling project directory",
-          "type": "string",
-          "default": ".",
-          "scope": "resource"
+        "ceedlingExplorer.projects": {
+          "description": "Path to the Ceedling project directories or yml files if not 'project.yml'",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "description": "Path to the Ceedling project directory or yml file",
+                "type": "string"
+              },
+              "debugLaunchConfig": {
+                "description": "Name of the debug configuration to use for debugging tests in the launch.json file",
+                "type": "string"
+              },
+              "name": {
+                "description": "Name for the project tests folder. If not defined, the yml or folder name is used",
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "debugLaunchConfig"
+            ],
+            "additionalProperties": false,
+            "default": [
+              {
+                "path": ".",
+                "debugLaunchConfig": "null"
+              }
+            ],
+            "scope": "resource"
+          }
         },
         "ceedlingExplorer.shellPath": {
           "description": "Path to the shell where Ceedling is installed",
           "type": "string",
           "default": "null",
-          "scope": "resource"
-        },
-        "ceedlingExplorer.debugConfiguration": {
-          "description": "Debug configuration to run during test debug.",
-          "type": "string",
           "scope": "resource"
         },
         "ceedlingExplorer.prettyTestLabel": {

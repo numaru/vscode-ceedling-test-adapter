@@ -5,6 +5,15 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 
 ![Screenshot](img/screenshot.png)
 
+
+## Important changes for this release (ceedling 1.0.0 & multi project setup)
+
+* The projectPath property in the settings was renamed to projects and is now a list of objects, including *path*, *debugLaunchConfig* and optionally *name*. This must be edited directly in the settings.json:
+  * "path": can point either to a directory containing a "project.yml" file or directly to another .yml file(with the respective project.yml in the same directory). This path should be relative to the workspace root directory.
+  * "debugLaunchConfig": must be the *name* property of the launch config (launch.json) that is used for this project. The ${command:ceedlingExplorer.debugTestExecutable} must still be used.
+  * "name" (optional): used as name for the folder containing the tests in the test explorer
+
+
 ## Features
 
 * Shows a Test Explorer in the Test view in VS Code's sidebar with all detected tests and suites and their state
@@ -21,7 +30,7 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 * Open the workspace or folder containing your Ceedling project
 * Configure your `project.yml` path in the VS Code's settings if required [see below](#options)
 * Configure the shell path where Ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
-* Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
+* Enable the `xml_tests_report` Ceedling plugin (v0.31.1) or `report_tests_log_factory` Ceedling plugin and `cppunit` option (v1.0.0) in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
 * Open the Test view
 * Run your tests using the ![Run](img/run.png) icons in the Test Explorer or the CodeLenses in your test file
 
@@ -31,7 +40,7 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 
 Property                                | Description
 ----------------------------------------|---------------------------------------------------------------
-`ceedlingExplorer.projectPath`          | The path to the Ceedling project (where the `project.yml` is) to use (relative to the workspace folder). By default (or if this option is set to `null`) it use the same path as the workspace folder.
+`ceedlingExplorer.projects`             | An array of objects with the path to the Ceedling project (or yml-file) to use (relative to the workspace folder):<br> - "path": can point either to a directory containing a "project.yml" file or directly to another .yml file(with the respective project.yml in the same directory). This path should be relative to the workspace root directory.<br> - "debugLaunchConfig": must be the *name* property of the launch config (launch.json) that is used for this project. The ${command:ceedlingExplorer.debugTestExecutable} must still be used.<br> - "name" (optional): used as name for the folder containing the tests in the test explorer
 `ceedlingExplorer.shellPath`            | The path to the shell where Ceedling is installed. By default (or if this option is set to `null`) it use the OS default shell.
 `ceedlingExplorer.debugConfiguration`   | The Debug configuration to run during debugging. See Debugging for more info.  
 `ceedlingExplorer.prettyTestLabel`      | The test label is prettier in the test explorer, that mean the label is shorter and without begin prefix. E.g. inactive `test_BlinkTaskShouldToggleLed`, active `BlinkTaskShouldToggleLed` <br> Inactive: <br> ![prettyTestLabelInactive](img/prettyTestLabelInactive.png) <br> Active: <br> ![prettyTestLabelActive](img/prettyTestLabelActive.png)
