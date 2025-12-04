@@ -21,7 +21,9 @@ Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the
 * Open the workspace or folder containing your Ceedling project
 * Configure your `project.yml` path in the VS Code's settings if required [see below](#options)
 * Configure the shell path where Ceedling is installed in the VS Code's settings if required (It might be required on Windows) [see below](#options)
-* Enable the `xml_tests_report` Ceedling plugin in your `project.yml` [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
+* Enable the appropriate Ceedling XML report plugin in your `project.yml`:
+  * **Ceedling 0.31.x**: Enable the `xml_tests_report` plugin [see the Ceedling doc](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md#tool-element-runtime-substitution-notational-substitution)
+  * **Ceedling 1.0+**: Enable the `report_tests_log_factory` plugin with `cppunit` report format (see [Configuration Examples](#ceedling-plugin-configuration))
 * Open the Test view
 * Run your tests using the ![Run](img/run.png) icons in the Test Explorer or the CodeLenses in your test file
 
@@ -91,6 +93,41 @@ Example pattern object (GCC compiler warnings):
     "column": 3
 }
 ```
+
+### Ceedling Plugin Configuration
+
+This extension supports both Ceedling 0.31.x and Ceedling 1.0+ by accepting either the legacy `xml_tests_report` plugin or the new `report_tests_log_factory` plugin with CppUnit format.
+
+#### Ceedling 0.31.x Configuration
+
+```yaml
+:plugins:
+  :enabled:
+    - xml_tests_report
+
+# Optional: customize report filename
+:xml_tests_report:
+  :artifact_filename: report.xml  # default
+```
+
+#### Ceedling 1.0+ Configuration
+
+```yaml
+:plugins:
+  :enabled:
+    - report_tests_log_factory
+
+:report_tests_log_factory:
+  :reports:
+    - cppunit  # Required for Test Explorer
+
+# Optional: customize report filename
+:report_tests_log_factory:
+  :cppunit:
+    :filename: cppunit_tests_report.xml  # default
+```
+
+**Note**: The extension requires the **CppUnit XML format** specifically. While `report_tests_log_factory` can generate multiple report formats (JUnit, JSON, HTML), only the CppUnit format is compatible with this extension.
 
 ## Commands
 

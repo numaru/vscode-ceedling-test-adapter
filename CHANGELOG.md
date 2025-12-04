@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+* Add support for Ceedling 1.0+ `report_tests_log_factory` plugin with CppUnit format.
+* Add `ceedlingExplorer.debugTestExecutablePath` command that returns the full path to test executable.
+* Add `isCeedling1Plus()` helper method for reliable Ceedling 1.0+ detection using plugin configuration.
+* Add configuration documentation for both Ceedling versions in README.
+
+### Fixed
+
+* Fix compatibility with Ceedling 1.0+ (addresses issues #137 and #145).
+* Fix debug executable path detection for Ceedling 1.0+ by checking for `report_tests_log_factory` plugin instead of relying on version string parsing.
+* Ensure test executables in subdirectories (e.g., `test_name/test_name.out`) are correctly located for debugging.
+
 ## [1.12.0] - 2024-01-02
 
 ### Added
