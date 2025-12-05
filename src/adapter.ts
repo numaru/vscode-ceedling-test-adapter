@@ -359,7 +359,11 @@ export class CeedlingAdapter implements TestAdapter {
                     return value.startsWith(" - ");
                 }).map((value: string) => {
                     return value.substr(3).trim();
-                })
+                }).filter((filePath: string) => {
+                    // Exclude files from the build output directory (preprocessed files, runners, etc.)
+                    // These would create duplicate entries in the test explorer
+                    return !filePath.includes(this.buildDirectory);
+                });
             }
         } finally {
             release();
