@@ -1,0 +1,15 @@
+{
+  "name": "ruby-ceedling",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hbenl.vscode-test-explorer",
+        "ms-vscode.cpptools"
+      ]
+    }
+  }
+}
