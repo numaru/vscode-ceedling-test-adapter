@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.13.1] - 2025-12-17
+
+### Fixed
+
+* Add the missing `rimraf` dependency.
+
 ## [1.13.0] - 2025-12-17
 
 ### Added
@@ -198,7 +204,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.1...develop
+[1.13.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...v1.11.0
