@@ -37,6 +37,7 @@ export class CeedlingAdapter implements TestAdapter {
     private fileLabelRegex: RegExp | undefined;
     private testLabelRegex: RegExp | undefined;
     private debugTestExecutable: string = '';
+    private debugTestExecutablePath: string = '';
     private buildDirectory: string = '';
     private reportFilename: string = '';
     private watchedFileForAutorunList: string[] = [];
@@ -182,11 +183,12 @@ export class CeedlingAdapter implements TestAdapter {
             const testFileName = `${/([^/]*).c$/.exec(testToExec)![1]}`;
 
             // Set current test executable
-            const ceedlingVersion = await this.getCeedlingVersion();
-            if (this.detectTestSpecificDefines(ymlProjectData, testFileName) || semver.satisfies(ceedlingVersion, ">0.31.1"))
-                this.setDebugTestExecutable(`${testFileName}/${testFileName}${ext}`);
-            else
-                this.setDebugTestExecutable(`${testFileName}${ext}`);
+            // Use subdirectory format for Ceedling 1.0+ or tests with specific defines
+            const useSubdirectory = this.isCeedling1Plus(ymlProjectData) || this.detectTestSpecificDefines(ymlProjectData, testFileName);
+            const executableRelPath = useSubdirectory ? `${testFileName}/${testFileName}${ext}` : `${testFileName}${ext}`;
+
+            this.setDebugTestExecutable(executableRelPath);
+            this.setDebugTestExecutablePath(`${this.buildDirectory}/test/out/${executableRelPath}`);
 
             // Launch debugger
             if (!await vscode.debug.startDebugging(this.workspaceFolder, debugConfiguration))
@@ -195,6 +197,7 @@ export class CeedlingAdapter implements TestAdapter {
         finally {
             // Reset current test executable
             this.setDebugTestExecutable("");
+            this.setDebugTestExecutablePath("");
         }
     }
 
@@ -205,6 +208,15 @@ export class CeedlingAdapter implements TestAdapter {
     setDebugTestExecutable(path: string) {
         this.debugTestExecutable = path;
         this.logger.info(`Set the debugTestExecutable to ${this.debugTestExecutable}`);
+    }
+
+    getDebugTestExecutablePath(): string {
+        return this.debugTestExecutablePath;
+    }
+
+    setDebugTestExecutablePath(path: string) {
+        this.debugTestExecutablePath = path;
+        this.logger.info(`Set the debugTestExecutablePath to ${this.debugTestExecutablePath}`);
     }
 
     async clean(): Promise<void> {
@@ -284,14 +296,30 @@ export class CeedlingAdapter implements TestAdapter {
                 `Please check the ceedlingExplorer.projectPath option.`;
         }
         try {
-            if (!ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report')) {
+            const hasXmlTestsReport = ymlProjectData[':plugins'][':enabled'].includes('xml_tests_report');
+            const hasReportFactory = ymlProjectData[':plugins'][':enabled'].includes('report_tests_log_factory');
+
+            if (!hasXmlTestsReport && !hasReportFactory) {
                 throw 'Xml report plugin not enabled';
             }
+
+            // For report_tests_log_factory, verify cppunit format is enabled
+            if (hasReportFactory && !hasXmlTestsReport) {
+                try {
+                    const reports = ymlProjectData[':report_tests_log_factory'][':reports'];
+                    if (!reports || !reports.includes('cppunit')) {
+                        throw 'CppUnit report not enabled in report_tests_log_factory';
+                    }
+                } catch (e) {
+                    return `The 'report_tests_log_factory' plugin is enabled but 'cppunit' report format is not configured. ` +
+                        `Add 'cppunit' to :report_tests_log_factory::reports list in your project.yml file.`;
+                }
+            }
         } catch (e) {
-            return `The required Ceedling plugin 'xml_tests_report' is not enabled. ` +
-                `You have to edit your 'project.xml' file to enable the plugin.\n` +
-                `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md` +
-                `#tool-element-runtime-substitution-notational-substitution`;
+            return `A required Ceedling XML report plugin is not enabled. ` +
+                `For Ceedling 0.31.x, enable 'xml_tests_report' plugin. ` +
+                `For Ceedling 1.0+, enable 'report_tests_log_factory' plugin with 'cppunit' report format.\n` +
+                `see https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CeedlingPacket.md`;
         }
     }
 
@@ -331,7 +359,11 @@ export class CeedlingAdapter implements TestAdapter {
                     return value.startsWith(" - ");
                 }).map((value: string) => {
                     return value.substr(3).trim();
-                })
+                }).filter((filePath: string) => {
+                    // Exclude files from the build output directory (preprocessed files, runners, etc.)
+                    // These would create duplicate entries in the test explorer
+                    return !filePath.includes(this.buildDirectory);
+                });
             }
         } finally {
             release();
@@ -381,6 +413,15 @@ export class CeedlingAdapter implements TestAdapter {
                 if (ymlProjectExt != undefined) {
                     return true;
                 }
+            } catch (e) { }
+        }
+        return false;
+    }
+
+    private isCeedling1Plus(ymlProjectData: any = undefined): boolean {
+        if (ymlProjectData) {
+            try {
+                return ymlProjectData[':plugins'][':enabled'].includes('report_tests_log_factory');
             } catch (e) { }
         }
         return false;
@@ -510,12 +551,28 @@ export class CeedlingAdapter implements TestAdapter {
     private setXmlReportPath(ymlProjectData: any = undefined) {
         let reportFilename = 'report.xml';
         if (ymlProjectData) {
+            // Try new Ceedling 1.0+ report_tests_log_factory plugin first
             try {
-                const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                const ymlProjectReportFilename = ymlProjectData[':report_tests_log_factory'][':cppunit'][':filename'];
                 if (ymlProjectReportFilename != undefined) {
                     reportFilename = ymlProjectReportFilename;
                 }
-            } catch (e) { }
+            } catch (e) {
+                // Fall back to old xml_tests_report plugin (Ceedling 0.31.x)
+                try {
+                    const ymlProjectReportFilename = ymlProjectData[':xml_tests_report'][':artifact_filename'];
+                    if (ymlProjectReportFilename != undefined) {
+                        reportFilename = ymlProjectReportFilename;
+                    }
+                } catch (e) {
+                    // If report_tests_log_factory is enabled but no custom filename, use default
+                    try {
+                        if (ymlProjectData[':plugins'][':enabled'].includes('report_tests_log_factory')) {
+                            reportFilename = 'cppunit_tests_report.xml';
+                        }
+                    } catch (e) { }
+                }
+            }
         }
         this.reportFilename = reportFilename;
     }
