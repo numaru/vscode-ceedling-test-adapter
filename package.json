@@ -7,7 +7,7 @@
     "name": "Kin Numaru"
   },
   "publisher": "numaru",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "license": "MIT",
   "homepage": "https://github.com/numaru/vscode-ceedling-test-adapter",
   "repository": {
@@ -57,7 +57,7 @@
     "@types/vscode": "^1.71.0",
     "@vscode/test-electron": "^2.3.8",
     "@vscode/vsce": "^2.22.0",
-    "esbuild": "^0.19.11",
+    "esbuild": "^0.27.2",
     "glob": "^7.1.6",
     "mocha": "^10.0.0",
     "typescript": "^4.6.3"
@@ -235,6 +235,12 @@
           "markdownDescription": "Should the ansi escape sequences be removed from ceedling stdout and stderr",
           "type": "boolean",
           "default": true,
+          "scope": "resource"
+        },
+        "ceedlingExplorer.evalRubyInStrings": {
+          "markdownDescription": "Evaluate the #{ruby_code} in the string using the ruby cli",
+          "type": "boolean",
+          "default": false,
           "scope": "resource"
         }
       }
