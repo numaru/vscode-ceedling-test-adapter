@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.13.0] - 2025-12-17
+
 ### Added
 
+* Add support for ruby `#{ENV['FOO']}` syntax.
 * Add support for Ceedling 1.0+ `report_tests_log_factory` plugin with CppUnit format.
 * Add `ceedlingExplorer.debugTestExecutablePath` command that returns the full path to test executable.
 * Add `isCeedling1Plus()` helper method for reliable Ceedling 1.0+ detection using plugin configuration.
@@ -195,7 +198,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.12.0...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.0...develop
+[1.13.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.10.0...v1.10.1
