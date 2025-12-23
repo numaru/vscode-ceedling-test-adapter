@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.13.3] - 2025-12-23
+
+### Fixed
+
+* Previous version has been burned by azure.
+
 ## [1.13.2] - 2025-12-17
 
 ### Fixed
@@ -210,7 +216,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.2...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.3...develop
+[1.13.3]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.2...v1.13.3
 [1.13.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.0...v1.13.1
 [1.13.0]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.12.0...v1.13.0
