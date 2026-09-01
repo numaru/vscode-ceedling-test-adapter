@@ -1,3 +1,9 @@
+> # ⚠️ Deprecated
+>
+> This extension is no longer maintained and has been deprecated in favor of the official [vscode Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
+>
+> Thank you to the Ceedling developers for their continued work maintaining and improving the project.
+
 # Ceedling Test Explorer for Visual Studio Code
 
 Run your [Ceedling](https://github.com/ThrowTheSwitch/Ceedling) tests using the 
