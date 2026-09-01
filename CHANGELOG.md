@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [1.13.4] - 2026-09-01
+
+### Added
+
+* Deprecate the extension in favor of the official [vscode Ceedling extension](https://marketplace.visualstudio.com/items?itemName=throw-the-switch.vscode-ceedling).
+
 ## [1.13.3] - 2025-12-23
 
 ### Fixed
@@ -216,7 +222,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 * Initial features
 
-[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.3...develop
+[Unreleased]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.4...develop
+[1.13.4]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.3...v1.13.4
 [1.13.3]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.2...v1.13.3
 [1.13.2]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.1...v1.13.2
 [1.13.1]: https://github.com/numaru/vscode-ceedling-test-adapter/compare/v1.13.0...v1.13.1
